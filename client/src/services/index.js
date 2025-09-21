@@ -9,6 +9,13 @@ export async function registerService(formData) {
   return data;
 }
 
+export async function googleLogin(access_token) {
+  const { data } = await axiosInstance.post("/auth/google-auth", {
+    access_token
+  });
+  return data;
+}
+
 export async function loginService(formData) {
   const { data } = await axiosInstance.post("/auth/login", formData);
 
@@ -84,7 +91,6 @@ export async function mediaBulkUploadService(formData, onProgressCallback) {
 
 export async function fetchStudentViewCourseListService(query) {
   const { data } = await axiosInstance.get(`/student/course/get?${query}`);
-
   return data;
 }
 
@@ -92,7 +98,7 @@ export async function fetchStudentViewCourseDetailsService(courseId) {
   const { data } = await axiosInstance.get(
     `/student/course/get/details/${courseId}`
   );
-
+  console.log(`course details:${JSON.stringify(data)}`)
   return data;
 }
 

@@ -1,6 +1,10 @@
 const User = require("../../models/User");
 const bcrypt = require("bcryptjs");
+const { OAuth2Client } = require('google-auth-library');
 const jwt = require("jsonwebtoken");
+const axios = require('axios');
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const registerUser = async (req, res) => {
   const { userName, userEmail, password, role } = req.body;
@@ -20,8 +24,9 @@ const registerUser = async (req, res) => {
   const newUser = new User({
     userName,
     userEmail,
-    role,
+    role: role || 'student',
     password: hashPassword,
+    authProvider: 'local'
   });
 
   await newUser.save();
@@ -51,7 +56,7 @@ const loginUser = async (req, res) => {
       userEmail: checkUser.userEmail,
       role: checkUser.role,
     },
-    "JWT_SECRET",
+    process.env.JWT_SECRET || "JWT_SECRET",
     { expiresIn: "120m" }
   );
 
@@ -65,9 +70,97 @@ const loginUser = async (req, res) => {
         userName: checkUser.userName,
         userEmail: checkUser.userEmail,
         role: checkUser.role,
+        avatar: checkUser.avatar,
       },
     },
   });
 };
 
-module.exports = { registerUser, loginUser };
+
+const checkUserExists = async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const user = await User.findOne({ userEmail: email });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        exists: !!user,
+        authProvider: user ? user.authProvider : null,
+      },
+    });
+  } catch (error) {
+    console.error('Check user exists error:', error);
+    return res.status(500).json({
+      success: false,
+      message: "Error checking user existence",
+    });
+  }
+};
+
+const googleLogin = async (req, res) => {
+
+  const { access_token } = req.body;
+
+  try {
+
+    const payload = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+      },
+    });
+
+    const { sub: googleId, email, name, picture } = payload.data;
+
+    let user = await User.findOne({
+      $or: [{ googleId }, { userEmail: email }]
+    });
+
+    if (!user) {
+      user = new User({
+        userName: name,
+        userEmail: email,
+        role: "student",
+        password: googleId,
+        authProvider: 'google',
+        avatar: picture
+      });
+      user = await user.save();
+    }
+
+    console.log(`user details:${JSON.stringify(user)}`)
+    const token = jwt.sign({ userId: user._id, email: user.email }, process.env.JWT_SECRET, {
+      expiresIn: '1h',
+    });
+
+    res.status(200).json({
+      message: 'Authentication successful',
+      data: {
+        success: true,
+        accessToken: token,
+        user: {
+          _id: user._id,
+          userName: user.userName,
+          userEmail: user.userEmail,
+          role: user.role,
+          avatar: user.avatar,
+        },
+      },
+    });
+  } catch (err) {
+    console.error('Error during Google Authentication:', err);
+    res.status(400).json({ error: 'Authentication failed' });
+  }
+}
+
+
+
+module.exports = { registerUser, loginUser, googleLogin, checkUserExists };

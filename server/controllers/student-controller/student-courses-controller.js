@@ -3,6 +3,7 @@ const StudentCourses = require("../../models/StudentCourses");
 const getCoursesByStudentId = async (req, res) => {
   try {
     const { studentId } = req.params;
+    console.log(`studentId:${studentId}`)
     const studentBoughtCourses = await StudentCourses.findOne({
       userId: studentId,
     });

@@ -91,6 +91,8 @@ const getStudentViewCourseDetails = async (req, res) => {
 const checkCoursePurchaseInfo = async (req, res) => {
   try {
     const { id, studentId } = req.params;
+    console.log(`only id,${id}`)
+    console.log(`studentId:${studentId}`)
     const studentCourses = await StudentCourses.findOne({
       userId: studentId,
     });
@@ -102,7 +104,7 @@ const checkCoursePurchaseInfo = async (req, res) => {
       data: ifStudentAlreadyBoughtCurrentCourse,
     });
   } catch (e) {
-    console.log(e);
+    console.log(`error message:${e.message}`);
     res.status(500).json({
       success: false,
       message: "Some error occured!",

@@ -133,8 +133,8 @@ function StudentViewCourseDetailsPage() {
   const getIndexOfFreePreviewUrl =
     studentViewCourseDetails !== null
       ? studentViewCourseDetails?.curriculum?.findIndex(
-          (item) => item.freePreview
-        )
+        (item) => item.freePreview
+      )
       : -1;
 
   return (
@@ -191,12 +191,11 @@ function StudentViewCourseDetailsPage() {
             <CardContent>
               {studentViewCourseDetails?.curriculum?.map(
                 (curriculumItem, index) => (
-                  <li
-                    className={`${
-                      curriculumItem?.freePreview
+                  <li key={index}
+                    className={`${curriculumItem?.freePreview
                         ? "cursor-pointer"
                         : "cursor-not-allowed"
-                    } flex items-center mb-4`}
+                      } flex items-center mb-4`}
                     onClick={
                       curriculumItem?.freePreview
                         ? () => handleSetFreePreview(curriculumItem)
@@ -223,8 +222,8 @@ function StudentViewCourseDetailsPage() {
                   url={
                     getIndexOfFreePreviewUrl !== -1
                       ? studentViewCourseDetails?.curriculum[
-                          getIndexOfFreePreviewUrl
-                        ].videoUrl
+                        getIndexOfFreePreviewUrl
+                      ].videoUrl
                       : ""
                   }
                   width="450px"
@@ -264,8 +263,8 @@ function StudentViewCourseDetailsPage() {
           <div className="flex flex-col gap-2">
             {studentViewCourseDetails?.curriculum
               ?.filter((item) => item.freePreview)
-              .map((filteredItem) => (
-                <p
+              .map((filteredItem,index) => (
+                <p key={index} 
                   onClick={() => handleSetFreePreview(filteredItem)}
                   className="cursor-pointer text-[16px] font-medium"
                 >

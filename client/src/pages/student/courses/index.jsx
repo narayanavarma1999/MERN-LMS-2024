@@ -88,11 +88,12 @@ function StudentViewCoursesPage() {
   }
 
   async function handleCourseNavigate(getCurrentCourseId) {
+    console.log(`before calling checkCoursePurchaseInfoService `)
     const response = await checkCoursePurchaseInfoService(
       getCurrentCourseId,
       auth?.user?._id
     );
-
+    console.log(`handleCourseNavigate Response:${JSON.stringify(handleCourseNavigate)}`)
     if (response?.success) {
       if (response?.data) {
         navigate(`/course-progress/${getCurrentCourseId}`);
@@ -132,11 +133,11 @@ function StudentViewCoursesPage() {
         <aside className="w-full md:w-64 space-y-4">
           <div>
             {Object.keys(filterOptions).map((ketItem) => (
-              <div className="p-4 border-b">
+              <div key={ketItem} className="p-4 border-b">
                 <h3 className="font-bold mb-3">{ketItem.toUpperCase()}</h3>
                 <div className="grid gap-2 mt-2">
                   {filterOptions[ketItem].map((option) => (
-                    <Label className="flex font-medium items-center gap-3">
+                    <Label key={option.id} className="flex font-medium items-center gap-3">
                       <Checkbox
                         checked={
                           filters &&
@@ -215,11 +216,10 @@ function StudentViewCoursesPage() {
                         </span>
                       </p>
                       <p className="text-[16px] text-gray-600 mt-3 mb-2">
-                        {`${courseItem?.curriculum?.length} ${
-                          courseItem?.curriculum?.length <= 1
+                        {`${courseItem?.curriculum?.length} ${courseItem?.curriculum?.length <= 1
                             ? "Lecture"
                             : "Lectures"
-                        } - ${courseItem?.level.toUpperCase()} Level`}
+                          } - ${courseItem?.level.toUpperCase()} Level`}
                       </p>
                       <p className="font-bold text-lg">
                         ${courseItem?.pricing}

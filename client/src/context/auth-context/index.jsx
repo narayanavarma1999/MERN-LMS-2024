@@ -1,11 +1,15 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { initialSignInFormData, initialSignUpFormData } from "@/config";
-import { checkAuthService, loginService, registerService } from "@/services";
+import { checkAuthService, googleLogin, loginService, registerService } from "@/services";
+import { googleLogout, useGoogleLogin } from "@react-oauth/google";
 import { createContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export const AuthContext = createContext(null);
 
 export default function AuthProvider({ children }) {
+
+  const navigate = useNavigate();
   const [signInFormData, setSignInFormData] = useState(initialSignInFormData);
   const [signUpFormData, setSignUpFormData] = useState(initialSignUpFormData);
   const [auth, setAuth] = useState({
@@ -29,6 +33,7 @@ export default function AuthProvider({ children }) {
         "accessToken",
         JSON.stringify(data.data.accessToken)
       );
+      sessionStorage.setItem('user', JSON.stringify(data.data.user));
       setAuth({
         authenticate: true,
         user: data.data.user,
@@ -78,6 +83,43 @@ export default function AuthProvider({ children }) {
     });
   }
 
+  const handleGoogleSignIn = useGoogleLogin({
+    onSuccess: async (credentialResponse) => {
+      try {
+        const data = await googleLogin(credentialResponse.access_token)
+        if (data.data.success) {
+          sessionStorage.setItem(
+            "accessToken",
+            JSON.stringify(data.data.accessToken)
+          );
+          sessionStorage.setItem('user', JSON.stringify(data.data.user));
+          setAuth({
+            authenticate: true,
+            user: data.data.user,
+          });
+        } else {
+          setAuth({
+            authenticate: false,
+            user: null,
+          });
+        }
+        navigate("/home")
+      } catch (error) {
+        console.error('Google authentication failed:', error.message);
+      }
+    },
+    onError: () => {
+      console.log('Google Login Failed');
+    },
+    flow: "implicit",
+  });
+
+  const logout = () => {
+    sessionStorage.clear();
+    navigate("/auth");
+    googleLogout()
+  };
+
   useEffect(() => {
     checkAuthUser();
   }, []);
@@ -93,6 +135,8 @@ export default function AuthProvider({ children }) {
         setSignUpFormData,
         handleRegisterUser,
         handleLoginUser,
+        handleGoogleSignIn,
+        logout,
         auth,
         resetCredentials,
       }}

@@ -1,10 +1,9 @@
-import { GraduationCap, TvMinimalPlay, User, ChevronDown, LogOut, BookOpen, Search, Bell,Settings } from "lucide-react";
+import { GraduationCap, User, ChevronDown, LogOut, BookOpen } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 import { useContext, useState, useRef, useEffect } from "react";
 import { AuthContext } from "@/context/auth-context";
-import { toast } from "react-toastify"; 
-import "react-toastify/dist/ReactToastify.css"; 
+import toast from "react-hot-toast";
 
 function StudentViewCommonHeader() {
   
@@ -15,14 +14,7 @@ function StudentViewCommonHeader() {
   const profileRef = useRef(null);
 
   function handleLogout() {
-     toast.success("Logged Out Successfully!", {
-      position: "top-center",
-      autoClose: 1000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-    });
+     toast.success("Logged out successfully!");
     resetCredentials();
     sessionStorage.clear();
     navigate("/auth");

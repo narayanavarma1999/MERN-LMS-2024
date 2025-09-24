@@ -4,8 +4,6 @@ const { OAuth2Client } = require('google-auth-library');
 const jwt = require("jsonwebtoken");
 const axios = require('axios');
 
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
 const registerUser = async (req, res) => {
   const { userName, userEmail, password, role } = req.body;
 
@@ -29,11 +27,32 @@ const registerUser = async (req, res) => {
     authProvider: 'local'
   });
 
-  await newUser.save();
+  const user = await newUser.save();
+
+  const accessToken = jwt.sign(
+    {
+      _id: user._id,
+      userName: user.userName,
+      userEmail: user.userEmail,
+      role: user.role,
+    },
+    process.env.JWT_SECRET || "JWT_SECRET",
+    { expiresIn: "120m" }
+  );
 
   return res.status(201).json({
     success: true,
     message: "User registered successfully!",
+    data: {
+      accessToken,
+      user: {
+        _id: user._id,
+        userName: user.userName,
+        userEmail: user.userEmail,
+        role: user.role,
+        avatar: user.avatar,
+      },
+    },
   });
 };
 
@@ -135,16 +154,15 @@ const googleLogin = async (req, res) => {
       });
       user = await user.save();
     }
-
-    console.log(`user details:${JSON.stringify(user)}`)
+    
     const token = jwt.sign({ userId: user._id, email: user.email }, process.env.JWT_SECRET, {
       expiresIn: '1h',
     });
 
     res.status(200).json({
+      success: true,
       message: 'Authentication successful',
       data: {
-        success: true,
         accessToken: token,
         user: {
           _id: user._id,

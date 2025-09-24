@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { signInFormControls, signUpFormControls } from "@/config";
-import { useSelector } from "react-redux";
 import {
   GraduationCap,
   BookOpen,
@@ -19,13 +18,11 @@ import {
   Lightbulb,
   ChevronRight,
   Sparkles,
-  Shield,
   Users
 } from "lucide-react";
 
 function AuthPage() {
   
-  const user = useSelector((store) => store.user);
   const [activeTab, setActiveTab] = useState("signin");
   const {
     signInFormData,

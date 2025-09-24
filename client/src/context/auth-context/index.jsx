@@ -1,13 +1,12 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { initialSignInFormData, initialSignUpFormData } from "@/config";
+import { loginSuccess, logoutSuccess } from "@/lib/appstore/authslice";
 import { checkAuthService, googleLogin, loginService, registerService } from "@/services";
 import { googleLogout, useGoogleLogin } from "@react-oauth/google";
 import { createContext, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { addUser } from "@/lib/appstore/userslice";
-import { loginSuccess } from "@/lib/appstore/authslice";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 export const AuthContext = createContext(null);
 
@@ -15,26 +14,37 @@ export default function AuthProvider({ children }) {
   const navigate = useNavigate();
   const [signInFormData, setSignInFormData] = useState(initialSignInFormData);
   const [signUpFormData, setSignUpFormData] = useState(initialSignUpFormData);
-  const [auth, setAuth] = useState({
-    authenticate: false,
-    user: null,
-  });
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const dispatch = useDispatch()
-  const [user, setUser] = useState(null);
-  const userData = useSelector(store => store.user)
+  const dispatch = useDispatch();
+  const authData = useSelector(store => store.auth);
 
+  useEffect(() => {
+    checkAuthUser();
+  }, []);
+
+  async function storeCredentials(data) {
+    const user = data.data.user;
+    sessionStorage.setItem("accessToken", data.data.accessToken);
+    sessionStorage.setItem('user', JSON.stringify(user));
+    dispatch(loginSuccess(user));
+  }
+
+  function resetCredentials() {
+    sessionStorage.removeItem("accessToken");
+    sessionStorage.removeItem("user");
+    dispatch(logoutSuccess());
+  }
 
   async function handleRegisterUser(event) {
     event.preventDefault();
     try {
-      console.log(`signUpFormData:${signUpFormData}`)
+      console.log(`signUpFormData:${JSON.stringify(signUpFormData)}`)
       const data = await registerService(signUpFormData);
-      console.log(`registration data:${JSON.stringify(data)}`)
       if (data.success) {
+        await storeCredentials(data);
         toast.success("Account created successfully!");
+        navigate("/home");
       } else {
         toast.error(data.message || "Registration failed");
       }
@@ -48,16 +58,8 @@ export default function AuthProvider({ children }) {
     try {
       const data = await loginService(signInFormData);
       if (data.success) {
-        sessionStorage.setItem(
-          "accessToken",
-          JSON.stringify(data.data.accessToken)
-        );
+        await storeCredentials(data);
         toast.success("Welcome back!");
-        sessionStorage.setItem('user', JSON.stringify(data.data.user));
-        setAuth({
-          authenticate: true,
-          user: data.data.user,
-        });
         navigate("/home");
       } else {
         toast.error(data.message || "Login failed");
@@ -69,57 +71,51 @@ export default function AuthProvider({ children }) {
 
   async function checkAuthUser() {
     try {
+      setLoading(true);
+
+
+      const accessToken = sessionStorage.getItem("accessToken");
+      const user = sessionStorage.getItem("user");
+
+      if (!accessToken || !user) {
+        resetCredentials();
+        setLoading(false);
+        return;
+      }
+
       const data = await checkAuthService();
-      console.log(`checkAuthService:${JSON.stringify(checkAuthService)}`)
       if (data.success) {
-        setAuth({
-          authenticate: true,
-          user: data.data.user,
-        });
-        sessionStorage.setItem(
-          "accessToken",
-          JSON.stringify(data.data.accessToken)
-        );
-        sessionStorage.setItem('user', JSON.stringify(data.data.user));
-        setAuth({
-          authenticate: true,
-          user: data.data.user,
-        });
-        dispatch(addUser(user));
-        setUser(user)
-        setIsAuthenticated(true)
-        dispatch(loginSuccess(user))
+        await storeCredentials(data);
+      } else {
+        resetCredentials();
+        toast.error("Session expired. Please login again.");
       }
     } catch (error) {
-      setUser(null)
-      setIsAuthenticated(false)
       console.log("Auth check failed:", error);
+      const accessToken = sessionStorage.getItem("accessToken");
+      const userStr = sessionStorage.getItem("user");
+
+      if (accessToken && userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          dispatch(loginSuccess(user));
+        } catch (parseError) {
+          resetCredentials();
+        }
+      } else {
+        resetCredentials();
+      }
     } finally {
       setLoading(false);
     }
-  }
-
-  function resetCredentials() {
-    setAuth({
-      authenticate: false,
-      user: null,
-    });
   }
 
   const handleGoogleSignIn = useGoogleLogin({
     onSuccess: async (credentialResponse) => {
       try {
         const data = await googleLogin(credentialResponse.access_token);
-        if (data.data.success) {
-          sessionStorage.setItem(
-            "accessToken",
-            JSON.stringify(data.data.accessToken)
-          );
-          sessionStorage.setItem('user', JSON.stringify(data.data.user));
-          setAuth({
-            authenticate: true,
-            user: data.data.user,
-          });
+        if (data.success) {
+          await storeCredentials(data);
           toast.success("Google login successful!");
           navigate("/home");
         } else {
@@ -137,22 +133,16 @@ export default function AuthProvider({ children }) {
   });
 
   const logout = () => {
-    sessionStorage.clear();
-    googleLogout();
     resetCredentials();
+    googleLogout();
     toast.success("Logged out successfully");
     navigate("/auth");
   };
 
-  useEffect(() => {
-    if (!userData) {
-      checkAuthUser()
-    } else {
-      setUser(userData);
-      setIsAuthenticated(true);
-      setLoading(false);
-    }
-  }, []);
+  const auth = {
+    authenticate: authData?.isAuthenticated || false,
+    user: authData?.user || null
+  };
 
   return (
     <AuthContext.Provider

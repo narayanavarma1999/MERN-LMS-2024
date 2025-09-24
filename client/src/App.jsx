@@ -1,88 +1,100 @@
 import { Route, Routes } from "react-router-dom";
-import AuthPage from "./pages/auth";
+import { Suspense, lazy } from "react";
 import RouteGuard from "./components/route-guard";
-import { useContext } from "react";
-import { AuthContext } from "./context/auth-context";
-import InstructorDashboardpage from "./pages/instructor";
 import StudentViewCommonLayout from "./components/student-view/common-layout";
-import StudentHomePage from "./pages/student/home";
-import NotFoundPage from "./pages/not-found";
+import AuthPage from "./pages/auth";
+import InstructorDashboardpage from "./pages/instructor";
 import AddNewCoursePage from "./pages/instructor/add-new-course";
-import StudentViewCoursesPage from "./pages/student/courses";
-import StudentViewCourseDetailsPage from "./pages/student/course-details";
-import PaypalPaymentReturnPage from "./pages/student/payment-return";
-import StudentCoursesPage from "./pages/student/student-courses";
-import StudentViewCourseProgressPage from "./pages/student/course-progress";
+import NotFoundPage from "./pages/not-found";
+import ShimmerUI from "./components/ui/shimmer";
+
+
+const StudentHomePage = lazy(() => import("./pages/student/home"));
+const StudentViewCoursesPage = lazy(() => import("./pages/student/courses"));
+const StudentViewCourseDetailsPage = lazy(() => import("./pages/student/course-details"));
+const StudentViewCourseProgressPage = lazy(() => import("./pages/student/course-progress"));
+const PaypalPaymentReturnPage = lazy(() => import("./pages/student/payment-return"));
+const StudentCoursesPage = lazy(() => import("./pages/student/student-courses"));
+const Contact = lazy(() => import("./components/ui/contact"));
 
 function App() {
-  const { auth } = useContext(AuthContext);
-
   return (
     <Routes>
-      <Route
-        path="/auth"
-        element={
-          <RouteGuard
-            element={<AuthPage />}
-            authenticated={auth?.authenticate}
-            user={auth?.user}
-          />
-        }
-      />
-      <Route
-        path="/instructor"
-        element={
-          <RouteGuard
-            element={<InstructorDashboardpage />}
-            authenticated={auth?.authenticate}
-            user={auth?.user}
-          />
-        }
-      />
-      <Route
-        path="/instructor/create-new-course"
-        element={
-          <RouteGuard
-            element={<AddNewCoursePage />}
-            authenticated={auth?.authenticate}
-            user={auth?.user}
-          />
-        }
-      />
-      <Route
-        path="/instructor/edit-course/:courseId"
-        element={
-          <RouteGuard
-            element={<AddNewCoursePage />}
-            authenticated={auth?.authenticate}
-            user={auth?.user}
-          />
-        }
-      />
-      <Route
-        path="/"
-        element={
-          <RouteGuard
-            element={<StudentViewCommonLayout />}
-            authenticated={auth?.authenticate}
-            user={auth?.user}
-          />
-        }
-      >
-        <Route path="" element={<StudentHomePage />} />
-        <Route path="home" element={<StudentHomePage />} />
-        <Route path="courses" element={<StudentViewCoursesPage />} />
+      {/* Other routes */}
+      <Route path="/shimmer" element={<ShimmerUI />} />
+      <Route path="/auth" element={<RouteGuard element={<AuthPage />} />} />
+      <Route path="/instructor" element={<RouteGuard element={<InstructorDashboardpage />} />} />
+      <Route path="/instructor/create-new-course" element={<RouteGuard element={<AddNewCoursePage />} />} />
+      <Route path="/instructor/edit-course/:courseId" element={<RouteGuard element={<AddNewCoursePage />} />} />
+
+      {/* Student routes */}
+      <Route path="/" element={<RouteGuard element={<StudentViewCommonLayout />} />}>
+        <Route
+          index
+          element={
+            <Suspense fallback={<ShimmerUI />}>
+              <StudentHomePage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="home"
+          element={
+            <Suspense fallback={<ShimmerUI />}>
+              <StudentHomePage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="courses"
+          element={
+            <Suspense fallback={<ShimmerUI />}>
+              <StudentViewCoursesPage />
+            </Suspense>
+          }
+        />
         <Route
           path="course/details/:id"
-          element={<StudentViewCourseDetailsPage />}
+          element={
+            <Suspense fallback={<ShimmerUI />}>
+              <StudentViewCourseDetailsPage />
+            </Suspense>
+          }
         />
-        <Route path="payment-return" element={<PaypalPaymentReturnPage />} />
-        <Route path="student-courses" element={<StudentCoursesPage />} />
+        <Route
+          path="payment-return"
+          element={
+            <Suspense fallback={<ShimmerUI />}>
+              <PaypalPaymentReturnPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="student-courses"
+          element={
+            <Suspense fallback={<ShimmerUI />}>
+              <StudentCoursesPage />
+            </Suspense>
+          }
+        />
         <Route
           path="course-progress/:id"
-          element={<StudentViewCourseProgressPage />}
+          element={
+            <Suspense fallback={<ShimmerUI />}>
+              <StudentViewCourseProgressPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="contact"
+          element={
+            <Suspense fallback={<ShimmerUI />}>
+              <Contact />
+            </Suspense>
+          }
         />
       </Route>
+
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

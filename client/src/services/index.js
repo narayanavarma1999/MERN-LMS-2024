@@ -3,7 +3,7 @@ import axiosInstance from "@/api/axiosInstance";
 export async function registerService(formData) {
   const { data } = await axiosInstance.post("/auth/register", {
     ...formData,
-    role: "user",
+    role: "student",
   });
 
   return data;
@@ -18,13 +18,11 @@ export async function googleLogin(access_token) {
 
 export async function loginService(formData) {
   const { data } = await axiosInstance.post("/auth/login", formData);
-
   return data;
 }
 
 export async function checkAuthService() {
   const { data } = await axiosInstance.get("/auth/check-auth");
-
   return data;
 }
 
@@ -63,7 +61,6 @@ export async function fetchInstructorCourseDetailsService(id) {
   const { data } = await axiosInstance.get(
     `/instructor/course/get/details/${id}`
   );
-
   return data;
 }
 
@@ -72,7 +69,6 @@ export async function updateCourseByIdService(id, formData) {
     `/instructor/course/update/${id}`,
     formData
   );
-
   return data;
 }
 

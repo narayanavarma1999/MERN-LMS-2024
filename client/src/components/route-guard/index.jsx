@@ -1,13 +1,20 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { Fragment } from "react";
+import { useSelector } from "react-redux";
 
-function RouteGuard({ authenticated, user, element }) {
+function RouteGuard({ element }) {
   const location = useLocation();
+  const authData = useSelector(store => store.auth);
 
-  console.log(authenticated, user, "useruser");
+  const authenticated = authData?.isAuthenticated || false;
+  const user = authData?.user || null;
+
+  if (authData?.loading) {
+    return <div>Loading...</div>;
+  }
 
   if (!authenticated && !location.pathname.includes("/auth")) {
-    return <Navigate to="/auth" />;
+    return <Navigate to="/auth" replace />;
   }
 
   if (
@@ -16,15 +23,15 @@ function RouteGuard({ authenticated, user, element }) {
     (location.pathname.includes("instructor") ||
       location.pathname.includes("/auth"))
   ) {
-    return <Navigate to="/home" />;
+    return <Navigate to="/home" replace />;
   }
 
   if (
     authenticated &&
-    user.role === "instructor" &&
+    user?.role === "instructor" &&
     !location.pathname.includes("instructor")
   ) {
-    return <Navigate to="/instructor" />;
+    return <Navigate to="/instructor" replace />;
   }
 
   return <Fragment>{element}</Fragment>;

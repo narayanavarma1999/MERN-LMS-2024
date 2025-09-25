@@ -1,6 +1,5 @@
 import { courseCategories } from "@/config";
 import banner from "../../../../public/banner-img.png";
-import virtilearnLogo from "../../../../public/virtilearn.png";
 import { Button } from "@/components/ui/button";
 import { useContext, useEffect, useState } from "react";
 import { StudentContext } from "@/context/student-context";

@@ -9,7 +9,7 @@ import {
     CheckCircle2,
     ExternalLink
 } from 'lucide-react';
-import 'leaflet/dist/leaflet.css';
+
 
 const Contact = () => {
     const [formData, setFormData] = useState({

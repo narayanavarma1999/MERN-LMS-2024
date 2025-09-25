@@ -75,9 +75,6 @@ function StudentCoursesPage() {
             src={course?.courseImage}
             alt={course?.title}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-            onError={(e) => {
-              e.target.src = 'https://via.placeholder.com/400x200/3B82F6/FFFFFF?text=Course+Image';
-            }}
           />
           <div className={`absolute inset-0 bg-gradient-to-br ${randomGradient} opacity-80 mix-blend-multiply`} />
 

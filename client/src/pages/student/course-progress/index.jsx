@@ -120,9 +120,9 @@ function StudentViewCourseProgressPage() {
   console.log(currentLecture, "currentLecture");
 
   return (
-    <div className="flex flex-col h-screen bg-[#1c1d1f] text-white">
+    <div className="flex flex-col h-screen bg-gradient-to-r from-blue-50 to-indigo-50 text-white">
       {showConfetti && <Confetti />}
-      <div className="flex items-center justify-between p-4 bg-[#1c1d1f] border-b border-gray-700">
+      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-700">
         <div className="flex items-center space-x-4">
           <Button
             onClick={() => navigate("/student-courses")}
@@ -133,7 +133,7 @@ function StudentViewCourseProgressPage() {
             <ChevronLeft className="h-4 w-4 mr-2" />
             Back to My Courses Page
           </Button>
-          <h1 className="text-lg font-bold hidden md:block">
+          <h1 className="text-lg font-bold text-gray-900 md:block">
             {studentCurrentCourseProgress?.courseDetails?.title}
           </h1>
         </div>
@@ -158,17 +158,17 @@ function StudentViewCourseProgressPage() {
             onProgressUpdate={setCurrentLecture}
             progressData={currentLecture}
           />
-          <div className="p-6 bg-[#1c1d1f]">
+          <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50">
             <h2 className="text-2xl font-bold mb-2">{currentLecture?.title}</h2>
           </div>
         </div>
         <div
-          className={`fixed top-[64px] right-0 bottom-0 w-[400px] bg-[#1c1d1f] border-l border-gray-700 transition-all duration-300 ${
+          className={`fixed top-[64px] right-0 bottom-0 w-[400px] bg-gradient-to-r from-blue-50 to-indigo-50 border-l border-gray-700 transition-all duration-300 ${
             isSideBarOpen ? "translate-x-0" : "translate-x-full"
           }`}
         >
           <Tabs defaultValue="content" className="h-full flex flex-col">
-            <TabsList className="grid bg-[#1c1d1f] w-full grid-cols-2 p-0 h-14">
+            <TabsList className="grid bg-gradient-to-r from-blue-50 to-indigo-50 w-full grid-cols-2 p-0 h-14">
               <TabsTrigger
                 value="content"
                 className=" text-black rounded-none h-full"

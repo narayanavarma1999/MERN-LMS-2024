@@ -96,9 +96,7 @@ function StudentHomePage() {
             src={course?.image}
             alt={course?.title}
             className="w-full h-72 object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={(e) => {
-              e.target.src = 'https://via.placeholder.com/400x200/3B82F6/FFFFFF?text=Course+Image';
-            }}
+        
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 

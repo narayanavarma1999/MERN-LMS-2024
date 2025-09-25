@@ -71,10 +71,6 @@ function StudentViewCommonHeader() {
           src={authUser.avatar}
           alt={authUser.userName || "User"}
           className="h-full w-full rounded-full object-cover"
-          onError={(e) => {
-            e.target.style.display = "none";
-            e.target.nextSibling.style.display = "flex";
-          }}
         />
       );
     }

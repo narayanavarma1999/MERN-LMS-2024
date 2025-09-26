@@ -309,7 +309,7 @@ function StudentHomePage() {
           {studentViewCoursesList && studentViewCoursesList.length > 0 && (
             <div className="text-center mt-12">
               <Button
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-lg font-semibold text-sm transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
                 onClick={() => navigate("/courses")}
               >
                 View All Courses

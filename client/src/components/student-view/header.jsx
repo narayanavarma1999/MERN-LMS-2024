@@ -149,9 +149,6 @@ function StudentViewCommonHeader() {
                   <div className="text-sm font-medium text-gray-900 truncate">
                     {authUser?.userName || "Student"}
                   </div>
-                  <div className="text-xs text-gray-500 truncate">
-                    {authUser?.userEmail || "student@example.com"}
-                  </div>
                 </div>
 
                 <Link

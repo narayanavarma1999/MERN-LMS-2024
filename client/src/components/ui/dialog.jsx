@@ -8,17 +8,18 @@ const DialogTrigger = DialogPrimitive.Trigger;
 const DialogPortal = DialogPrimitive.Portal;
 const DialogClose = DialogPrimitive.Close;
 
-// 🎨 Ultra Pro Overlay with Glass Morphism
+// 🌌 Ultra Premium Overlay with Multi-layer Effects
 const DialogOverlay = React.forwardRef(
-  ({ className, showOverlay = true, ...props }, ref) => (
+  ({ className, showOverlay = true, blurIntensity = "xl", ...props }, ref) => (
     <DialogPrimitive.Overlay
       ref={ref}
       className={cn(
-        "fixed inset-0 z-50 backdrop-blur-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-        className,
+        "fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        `backdrop-blur-${blurIntensity}`,
         {
-          "bg-black/60": showOverlay,
-        }
+          "bg-gradient-to-br from-purple-900/40 via-blue-900/30 to-pink-900/40": showOverlay,
+        },
+        className
       )}
       {...props}
     />
@@ -26,66 +27,122 @@ const DialogOverlay = React.forwardRef(
 );
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
-// 💫 Premium Dialog Content with Advanced Animations
+// 🚀 Ultra Premium Dialog Content with Multi-dimensional Effects
 const DialogContent = React.forwardRef(
-  ({ className, showOverlay = true, children, ...props }, ref) => (
-    <DialogPortal>
-      <DialogOverlay showOverlay={showOverlay} />
-      <DialogPrimitive.Content
-        ref={ref}
-        className={cn(
-          "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-6 border-0 bg-gradient-to-br from-white to-gray-50/80 backdrop-blur-xl p-8 shadow-2xl shadow-black/20 duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-3xl border border-white/20",
-          className
-        )}
-        {...props}
-      >
-        {/* ✨ Animated Background Effect */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 rounded-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/60 via-transparent to-transparent" />
-        
-        {children}
-        
-        {/* 🎯 Premium Close Button */}
-        <DialogPrimitive.Close className="absolute right-6 top-6 rounded-2xl p-2 bg-white/80 backdrop-blur-sm border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 hover:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:pointer-events-none data-[state=open]:bg-white">
-          <Cross2Icon className="h-5 w-5 text-gray-600 hover:text-gray-900 transition-colors" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      </DialogPrimitive.Content>
-    </DialogPortal>
-  )
+  ({ 
+    className, 
+    showOverlay = true, 
+    children, 
+    variant = "default",
+    blurIntensity = "xl",
+    ...props 
+  }, ref) => {
+    const variants = {
+      default: "from-white/95 via-gray-50/90 to-white/95 border-white/40",
+      premium: "from-blue-50/95 via-purple-50/90 to-pink-50/95 border-blue-200/60",
+      dark: "from-gray-900/95 via-gray-800/90 to-gray-900/95 border-gray-700/60",
+      gradient: "from-blue-500/10 via-purple-500/10 to-pink-500/10 border-white/20"
+    };
+
+    return (
+      <DialogPortal>
+        <DialogOverlay showOverlay={showOverlay} blurIntensity={blurIntensity} />
+        <DialogPrimitive.Content
+          ref={ref}
+          className={cn(
+            "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-6 bg-gradient-to-br backdrop-blur-xl p-8 shadow-2xl duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-3xl border",
+            variants[variant],
+            "shadow-2xl shadow-black/30 hover:shadow-3xl transition-all duration-700",
+            className
+          )}
+          {...props}
+        >
+          {/* 🌟 Animated Gradient Background */}
+          <div className="absolute inset-0 rounded-3xl overflow-hidden">
+            <div className="absolute -inset-10 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 animate-gradient-x" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/60 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-noise opacity-[0.02]" />
+          </div>
+
+          {/* ✨ Floating Particles Effect */}
+          <div className="absolute inset-0 overflow-hidden rounded-3xl">
+            {[...Array(15)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-1 h-1 bg-blue-400/30 rounded-full animate-float"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  animationDelay: `${i * 0.5}s`,
+                  animationDuration: `${3 + Math.random() * 2}s`
+                }}
+              />
+            ))}
+          </div>
+
+          {/* 🎯 Premium Glass Morphism Layer */}
+          <div className="absolute inset-0 bg-white/20 backdrop-blur-md rounded-3xl border border-white/30" />
+          
+          {children}
+          
+          {/* 💎 Ultra Premium Close Button */}
+          <DialogPrimitive.Close className="group absolute right-6 top-6 rounded-2xl p-3 bg-white/90 backdrop-blur-xl border border-white/60 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-110 hover:bg-white hover:border-blue-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:scale-110 active:scale-95 disabled:pointer-events-none data-[state=open]:bg-white/95">
+            <Cross2Icon className="h-5 w-5 text-gray-600 group-hover:text-blue-600 transition-all duration-300 group-hover:rotate-90" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    );
+  }
 );
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
-// 🌟 Enhanced Dialog Header
-const DialogHeader = ({ className, ...props }) => (
+// 🌈 Ultra Premium Dialog Header with Enhanced Effects
+const DialogHeader = React.forwardRef(({ className, hasIcon = false, ...props }, ref) => (
   <div
+    ref={ref}
     className={cn(
-      "flex flex-col space-y-3 text-center sm:text-left relative z-10",
+      "flex flex-col space-y-4 text-center sm:text-left relative z-10",
+      hasIcon && "text-center",
       className
     )}
     {...props}
   />
-);
+));
 DialogHeader.displayName = "DialogHeader";
 
-// 💎 Premium Dialog Footer
-const DialogFooter = ({ className, ...props }) => (
-  <div
-    className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-4 relative z-10",
-      className
-    )}
-    {...props}
-  />
-);
+// 💫 Premium Dialog Footer with Advanced Layout
+const DialogFooter = React.forwardRef(({ className, layout = "default", ...props }, ref) => {
+  const layouts = {
+    default: "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-4",
+    centered: "flex justify-center space-x-4",
+    stretched: "grid grid-cols-2 gap-4"
+  };
+
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "relative z-10",
+        layouts[layout],
+        className
+      )}
+      {...props}
+    />
+  );
+});
 DialogFooter.displayName = "DialogFooter";
 
-// 🏆 Ultra Pro Dialog Title
-const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (
+// 🏆 Ultra Pro Dialog Title with Advanced Typography
+const DialogTitle = React.forwardRef(({ className, gradient = true, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "text-2xl font-bold leading-tight tracking-tight bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent",
+      "text-3xl font-bold leading-tight tracking-tight",
+      gradient 
+        ? "bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent"
+        : "text-gray-900",
+      "drop-shadow-sm",
       className
     )}
     {...props}
@@ -93,42 +150,137 @@ const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (
 ));
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
-// 📝 Enhanced Dialog Description
+// 📝 Ultra Premium Dialog Description
 const DialogDescription = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-base text-gray-600 leading-relaxed", className)}
+    className={cn(
+      "text-lg text-gray-600 leading-relaxed font-light drop-shadow-sm",
+      className
+    )}
     {...props}
   />
 ));
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
-// 🎨 Additional Premium Components
+// 🎨 Premium Dialog Section with Enhanced Styling
+const DialogSection = React.forwardRef(({ className, variant = "default", ...props }, ref) => {
+  const variants = {
+    default: "border-t border-gray-100/60",
+    card: "bg-white/50 rounded-2xl p-6 border border-white/60 shadow-sm",
+    gradient: "bg-gradient-to-r from-blue-50/50 to-purple-50/50 rounded-2xl p-6"
+  };
 
-// ✨ Dialog Section for better content organization
-const DialogSection = React.forwardRef(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("py-4 border-t border-gray-100/50 first:border-t-0", className)}
-    {...props}
-  />
-));
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "py-6 relative z-10",
+        variants[variant],
+        "first:border-t-0 first:pt-0",
+        className
+      )}
+      {...props}
+    />
+  );
+});
 DialogSection.displayName = "DialogSection";
 
-// 💫 Dialog Icon for premium icon integration
-const DialogIcon = React.forwardRef(({ className, icon: Icon, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-2xl shadow-blue-500/25 mx-auto mb-4",
-      className
-    )}
-    {...props}
-  >
-    <Icon className="h-8 w-8 text-white" />
-  </div>
-));
+// ✨ Ultra Premium Dialog Icon with Advanced Effects
+const DialogIcon = React.forwardRef(({ 
+  className, 
+  icon: Icon, 
+  variant = "default",
+  size = "lg",
+  ...props 
+}, ref) => {
+  const sizes = {
+    sm: "w-12 h-12",
+    md: "w-16 h-16",
+    lg: "w-20 h-20",
+    xl: "w-24 h-24"
+  };
+
+  const variants = {
+    default: "bg-gradient-to-br from-blue-500 to-purple-600 shadow-2xl shadow-blue-500/25",
+    premium: "bg-gradient-to-br from-emerald-500 to-cyan-600 shadow-2xl shadow-emerald-500/25",
+    warning: "bg-gradient-to-br from-amber-500 to-orange-600 shadow-2xl shadow-amber-500/25",
+    success: "bg-gradient-to-br from-green-500 to-teal-600 shadow-2xl shadow-green-500/25"
+  };
+
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "rounded-3xl flex items-center justify-center mx-auto mb-6 transition-all duration-500 hover:scale-110 hover:rotate-12 cursor-pointer",
+        sizes[size],
+        variants[variant],
+        "group",
+        className
+      )}
+      {...props}
+    >
+      <Icon className={cn(
+        "text-white transition-all duration-500 group-hover:scale-110",
+        {
+          "h-6 w-6": size === "sm",
+          "h-8 w-8": size === "md",
+          "h-10 w-10": size === "lg",
+          "h-12 w-12": size === "xl"
+        }
+      )} />
+    </div>
+  );
+});
 DialogIcon.displayName = "DialogIcon";
+
+// 🌟 New: Dialog Hero with Background Effects
+const DialogHero = React.forwardRef(({ className, background = "default", ...props }, ref) => {
+  const backgrounds = {
+    default: "bg-gradient-to-br from-blue-500/5 to-purple-500/5",
+    premium: "bg-gradient-to-br from-emerald-500/5 to-cyan-500/5",
+    gradient: "bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10"
+  };
+
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "relative rounded-2xl p-8 mb-6 overflow-hidden",
+        backgrounds[background],
+        className
+      )}
+      {...props}
+    >
+      <div className="absolute inset-0 bg-noise opacity-10" />
+      <div className="relative z-10">{props.children}</div>
+    </div>
+  );
+});
+DialogHero.displayName = "DialogHero";
+
+// 💫 New: Dialog Action Button Group
+const DialogActions = React.forwardRef(({ className, align = "end", ...props }, ref) => {
+  const aligns = {
+    start: "justify-start",
+    center: "justify-center",
+    end: "justify-end",
+    between: "justify-between"
+  };
+
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "flex flex-wrap gap-3 mt-6",
+        aligns[align],
+        className
+      )}
+      {...props}
+    />
+  );
+});
+DialogActions.displayName = "DialogActions";
 
 export {
   Dialog,
@@ -143,4 +295,6 @@ export {
   DialogDescription,
   DialogSection,
   DialogIcon,
+  DialogHero,
+  DialogActions,
 };

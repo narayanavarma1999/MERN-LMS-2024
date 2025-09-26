@@ -7,6 +7,7 @@ import InstructorDashboardpage from "./pages/instructor";
 import AddNewCoursePage from "./pages/instructor/add-new-course";
 import NotFoundPage from "./pages/not-found";
 import ShimmerUI from "./components/ui/shimmer";
+import Profile from "./components/ui/profile";
 
 
 const StudentHomePage = lazy(() => import("./pages/student/home"));
@@ -93,6 +94,16 @@ function App() {
             </Suspense>
           }
         />
+
+        <Route
+          path="profile"
+          element={
+            <Suspense fallback={<ShimmerUI />}>
+              <Profile />
+            </Suspense>
+          }
+        />
+
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

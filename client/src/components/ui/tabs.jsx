@@ -15,18 +15,18 @@ const TabsList = React.forwardRef(({ className, variant = "default", ...props },
       variant === "underline" && "bg-transparent border-b border-gray-200/50 rounded-none p-0 gap-6",
       className
     )}
-    {...props} 
+    {...props}
   />
 ))
 TabsList.displayName = TabsPrimitive.List.displayName
 
 // 💫 Ultra Pro TabsTrigger with Multiple Variants
-const TabsTrigger = React.forwardRef(({ 
-  className, 
+const TabsTrigger = React.forwardRef(({
+  className,
   variant = "default",
   icon: Icon,
   badge,
-  ...props 
+  ...props
 }, ref) => (
   <TabsPrimitive.Trigger
     ref={ref}
@@ -36,21 +36,21 @@ const TabsTrigger = React.forwardRef(({
       "ring-offset-background transition-all duration-300 ease-out",
       "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20 focus-visible:ring-offset-2",
       "disabled:pointer-events-none disabled:opacity-40",
-      
+
       // Default Variant - Inactive State
       variant === "default" && [
         "bg-transparent text-gray-600 hover:text-gray-900 hover:bg-white/50",
         "data-[state=active]:bg-white data-[state=active]:shadow-lg",
         "data-[state=active]:text-gray-900 data-[state=active]:border data-[state=active]:border-white/40"
       ],
-      
+
       // Pills Variant - Inactive State
       variant === "pills" && [
         "bg-white/30 text-gray-600 hover:bg-white/60 hover:text-gray-900",
         "data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600",
         "data-[state=active]:text-white data-[state=active]:shadow-2xl data-[state=active]:shadow-blue-500/25"
       ],
-      
+
       // Underline Variant - Inactive State
       variant === "underline" && [
         "bg-transparent text-gray-500 hover:text-gray-700 pb-4 relative",
@@ -59,10 +59,10 @@ const TabsTrigger = React.forwardRef(({
         "data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:h-0.5",
         "data-[state=active]:after:bg-gradient-to-r data-[state=active]:after:from-blue-600 data-[state=active]:after:to-purple-600"
       ],
-      
+
       // Icon Styles
       Icon && "gap-2",
-      
+
       className
     )}
     {...props}
@@ -93,7 +93,7 @@ const TabsContent = React.forwardRef(({ className, ...props }, ref) => (
       "data-[state=inactive]:duration-300 data-[state=active]:duration-500",
       className
     )}
-    {...props} 
+    {...props}
   />
 ))
 TabsContent.displayName = TabsPrimitive.Content.displayName
@@ -146,7 +146,7 @@ TabsIndicator.displayName = "TabsIndicator"
 // 📱 MobileTabs - Responsive Tab System
 const MobileTabs = React.forwardRef(({ className, children, ...props }, ref) => {
   const [activeTab, setActiveTab] = React.useState("tab1");
-  
+
   return (
     <div
       ref={ref}
@@ -197,10 +197,10 @@ const AnimatedTabs = React.forwardRef(({ className, children, ...props }, ref) =
 ))
 AnimatedTabs.displayName = "AnimatedTabs"
 
-export { 
-  Tabs, 
-  TabsList, 
-  TabsTrigger, 
+export {
+  Tabs,
+  TabsList,
+  TabsTrigger,
   TabsContent,
   TabsGroup,
   TabsPanel,

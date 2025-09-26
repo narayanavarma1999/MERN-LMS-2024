@@ -381,7 +381,7 @@ function StudentViewCourseDetailsPage() {
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105"
                   size="lg"
                 >
-                  <Zap className="h-5 w-5 mr-2" />
+           
                   Enroll Now
                 </Button>
 

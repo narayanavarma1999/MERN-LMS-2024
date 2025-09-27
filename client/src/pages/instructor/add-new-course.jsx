@@ -26,6 +26,7 @@ function AddNewCoursePage() {
     setCourseCurriculumFormData,
     currentEditedCourseId,
     setCurrentEditedCourseId,
+    setCourseId,
   } = useContext(InstructorContext);
 
   const { auth } = useContext(AuthContext);
@@ -92,6 +93,7 @@ function AddNewCoursePage() {
       setCourseCurriculumFormData(courseCurriculumInitialFormData);
       navigate(-1);
       setCurrentEditedCourseId(null);
+      setCourseId(null);
     }
 
     console.log(courseFinalFormData, "courseFinalFormData");
@@ -114,6 +116,7 @@ function AddNewCoursePage() {
       console.log(setCourseFormData, response?.data, "setCourseFormData");
       setCourseLandingFormData(setCourseFormData);
       setCourseCurriculumFormData(response?.data?.curriculum);
+      setCourseId(currentEditedCourseId); // Set the courseId here
     }
 
     console.log(response, "response");
@@ -124,7 +127,10 @@ function AddNewCoursePage() {
   }, [currentEditedCourseId]);
 
   useEffect(() => {
-    if (params?.courseId) setCurrentEditedCourseId(params?.courseId);
+    if (params?.courseId) {
+      setCurrentEditedCourseId(params?.courseId);
+      setCourseId(params?.courseId); // Also set courseId here
+    }
   }, [params?.courseId]);
 
   console.log(params, currentEditedCourseId, "params");

@@ -1,36 +1,29 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { AuthContext } from "@/context/auth-context";
 import { StudentContext } from "@/context/student-context";
 import {
-    User,
-    Mail,
-    Calendar,
     BookOpen,
-    Award,
     Star,
-    Clock,
-    Edit3,
     Trophy,
     Target,
-    Zap,
-    CheckCircle,
     PlayCircle,
-    Users,
-    Crown,
-    Sparkles,
-    Settings
+    Users
 } from "lucide-react";
 import { useContext, useState } from "react";
+import { useSelector } from "react-redux";
 
 function Profile() {
     const { auth } = useContext(AuthContext);
     const { studentBoughtCoursesList } = useContext(StudentContext);
-
+    const userProgress = useSelector(store => store.progress)
+    const progress = userProgress ? userProgress : 0
     const [activeTab, setActiveTab] = useState('overview');
+
+    console.log(`auth user response:${JSON.stringify(auth)}`)
 
     // Calculate stats
     const completedCourses = studentBoughtCoursesList?.filter(course => course.progress === 100).length || 0;
@@ -61,10 +54,6 @@ function Profile() {
                             <h1 className="text-3xl font-bold text-blue-600">My Profile</h1>
                             <p className="text-gray-900 font-medium  mt-2">Welcome back, {auth?.user?.userName}!</p>
                         </div>
-                        {/* <Button className="bg-gradient-to-r from-blue-600 to-purple-600">
-              <Edit3 className="w-4 h-4 mr-2" />
-              Edit Profile
-            </Button> */}
                     </div>
                 </div>
             </div>
@@ -91,8 +80,8 @@ function Profile() {
 
                             <div className="space-y-3 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Member since</span>
-                                    <span className="font-semibold">2024</span>
+                                    <span className="text-gray-900">Member since</span>
+                                    <span className="font-normal">{auth.user.joinedDateFormatted}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">Courses</span>
@@ -153,9 +142,9 @@ function Profile() {
                                                 <img src={course.courseImage} alt={course.title} className="w-12 h-12 rounded-lg" />
                                                 <div className="flex-1">
                                                     <div className="font-medium text-sm">{course.title}</div>
-                                                    <Progress value={course.progress} className="h-2 mt-2" />
+                                                    <Progress value={progress} className="h-2 mt-2" />
                                                 </div>
-                                                <span className="text-sm font-semibold">{course.progress}%</span>
+                                                <span className="text-sm font-semibold">{progress}%</span>
                                             </div>
                                         ))}
                                     </div>
@@ -192,7 +181,7 @@ function Profile() {
                                             <div className="flex-1">
                                                 <div className="font-semibold">{course.title}</div>
                                                 <div className="text-sm text-gray-600">{course.instructorName}</div>
-                                                <Progress value={course.progress} className="h-2 mt-2" />
+                                                <Progress value={progress} className="h-2 mt-2" />
                                             </div>
                                             <Button size="sm">
                                                 {course.progress === 100 ? 'Review' : 'Continue'}

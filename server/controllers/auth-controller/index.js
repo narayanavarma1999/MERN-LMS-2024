@@ -45,13 +45,7 @@ const registerUser = async (req, res) => {
     message: "User registered successfully!",
     data: {
       accessToken,
-      user: {
-        _id: user._id,
-        userName: user.userName,
-        userEmail: user.userEmail,
-        role: user.role,
-        avatar: user.avatar,
-      },
+      user
     },
   });
 };
@@ -84,13 +78,7 @@ const loginUser = async (req, res) => {
     message: "Logged in successfully",
     data: {
       accessToken,
-      user: {
-        _id: checkUser._id,
-        userName: checkUser.userName,
-        userEmail: checkUser.userEmail,
-        role: checkUser.role,
-        avatar: checkUser.avatar,
-      },
+      user: checkUser
     },
   });
 };
@@ -164,13 +152,7 @@ const googleLogin = async (req, res) => {
       message: 'Authentication successful',
       data: {
         accessToken: token,
-        user: {
-          _id: user._id,
-          userName: user.userName,
-          userEmail: user.userEmail,
-          role: user.role,
-          avatar: user.avatar,
-        },
+        user
       },
     });
   } catch (err) {

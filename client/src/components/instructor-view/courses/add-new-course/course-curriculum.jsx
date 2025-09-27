@@ -11,9 +11,10 @@ import {
   mediaBulkUploadService,
   mediaDeleteService,
   mediaUploadService,
+  updateCourseByIdService,
 } from "@/services";
 import { Upload } from "lucide-react";
-import { useContext, useRef } from "react";
+import { useContext, useRef, useState } from "react";
 
 function CourseCurriculum() {
   const {
@@ -23,9 +24,11 @@ function CourseCurriculum() {
     setMediaUploadProgress,
     mediaUploadProgressPercentage,
     setMediaUploadProgressPercentage,
+    courseId, // Now this comes from context
   } = useContext(InstructorContext);
 
   const bulkUploadInputRef = useRef(null);
+  const [uploadingIndex, setUploadingIndex] = useState(null);
 
   function handleNewLecture() {
     setCourseCurriculumFormData([
@@ -65,6 +68,7 @@ function CourseCurriculum() {
 
       try {
         setMediaUploadProgress(true);
+        setUploadingIndex(currentIndex);
         const response = await mediaUploadService(
           videoFormData,
           setMediaUploadProgressPercentage
@@ -75,33 +79,80 @@ function CourseCurriculum() {
             ...cpyCourseCurriculumFormData[currentIndex],
             videoUrl: response?.data?.url,
             public_id: response?.data?.public_id,
+            duration: response?.data?.duration
           };
           setCourseCurriculumFormData(cpyCourseCurriculumFormData);
           setMediaUploadProgress(false);
+          setUploadingIndex(null);
+
+          // Update database after successful upload
+          await updateDatabaseCurriculum(cpyCourseCurriculumFormData);
         }
       } catch (error) {
         console.log(error);
+        setMediaUploadProgress(false);
+        setUploadingIndex(null);
       }
     }
   }
 
   async function handleReplaceVideo(currentIndex) {
+    if (!courseId) {
+      console.error("Course ID is required for updating curriculum");
+      return;
+    }
+
     let cpyCourseCurriculumFormData = [...courseCurriculumFormData];
-    const getCurrentVideoPublicId =
-      cpyCourseCurriculumFormData[currentIndex].public_id;
+    const getCurrentVideoPublicId = cpyCourseCurriculumFormData[currentIndex].public_id;
 
-    const deleteCurrentMediaResponse = await mediaDeleteService(
-      getCurrentVideoPublicId
-    );
+    // Only delete from Cloudinary if public_id exists
+    if (getCurrentVideoPublicId) {
+      try {
+        const deleteCurrentMediaResponse = await mediaDeleteService(getCurrentVideoPublicId);
 
-    if (deleteCurrentMediaResponse?.success) {
-      cpyCourseCurriculumFormData[currentIndex] = {
-        ...cpyCourseCurriculumFormData[currentIndex],
-        videoUrl: "",
-        public_id: "",
-      };
+        if (!deleteCurrentMediaResponse?.success) {
+          console.error("Failed to delete video from Cloudinary");
+          return;
+        }
+      } catch (error) {
+        console.error("Error deleting video from Cloudinary:", error);
+        return;
+      }
+    }
 
-      setCourseCurriculumFormData(cpyCourseCurriculumFormData);
+    // Reset the video data for this lecture
+    cpyCourseCurriculumFormData[currentIndex] = {
+      ...cpyCourseCurriculumFormData[currentIndex],
+      videoUrl: "",
+      public_id: "",
+      duration: ""
+    };
+
+    setCourseCurriculumFormData(cpyCourseCurriculumFormData);
+
+    // Update the database
+    await updateDatabaseCurriculum(cpyCourseCurriculumFormData);
+  }
+
+  // Helper function to update database curriculum
+  async function updateDatabaseCurriculum(updatedCurriculum) {
+    if (!courseId) {
+      console.error("Course ID is required for updating curriculum");
+      return;
+    }
+
+    try {
+      const response = await updateCourseByIdService(courseId, {
+        curriculum: updatedCurriculum
+      });
+
+      if (response.success) {
+        console.log("Curriculum updated successfully in database");
+      } else {
+        console.error("Failed to update curriculum in database");
+      }
+    } catch (error) {
+      console.error("Error updating curriculum in database:", error);
     }
   }
 
@@ -144,7 +195,6 @@ function CourseCurriculum() {
         setMediaUploadProgressPercentage
       );
 
-      console.log(response, "bulk");
       if (response?.success) {
         let cpyCourseCurriculumFormdata =
           areAllCourseCurriculumFormDataObjectsEmpty(courseCurriculumFormData)
@@ -156,34 +206,56 @@ function CourseCurriculum() {
           ...response?.data.map((item, index) => ({
             videoUrl: item?.url,
             public_id: item?.public_id,
-            title: `Lecture ${
-              cpyCourseCurriculumFormdata.length + (index + 1)
-            }`,
+            title: `Lecture ${cpyCourseCurriculumFormdata.length + (index + 1)}`,
             freePreview: false,
+            duration: item?.duration || ""
           })),
         ];
         setCourseCurriculumFormData(cpyCourseCurriculumFormdata);
         setMediaUploadProgress(false);
+
+        // Update database after bulk upload
+        await updateDatabaseCurriculum(cpyCourseCurriculumFormdata);
       }
     } catch (e) {
       console.log(e);
+      setMediaUploadProgress(false);
     }
   }
 
   async function handleDeleteLecture(currentIndex) {
-    let cpyCourseCurriculumFormData = [...courseCurriculumFormData];
-    const getCurrentSelectedVideoPublicId =
-      cpyCourseCurriculumFormData[currentIndex].public_id;
-
-    const response = await mediaDeleteService(getCurrentSelectedVideoPublicId);
-
-    if (response?.success) {
-      cpyCourseCurriculumFormData = cpyCourseCurriculumFormData.filter(
-        (_, index) => index !== currentIndex
-      );
-
-      setCourseCurriculumFormData(cpyCourseCurriculumFormData);
+    if (!courseId) {
+      console.error("Course ID is required for deleting lecture");
+      return;
     }
+
+    let cpyCourseCurriculumFormData = [...courseCurriculumFormData];
+    const getCurrentSelectedVideoPublicId = cpyCourseCurriculumFormData[currentIndex].public_id;
+
+    // Delete from Cloudinary if public_id exists
+    if (getCurrentSelectedVideoPublicId) {
+      try {
+        const response = await mediaDeleteService(getCurrentSelectedVideoPublicId);
+
+        if (!response?.success) {
+          console.error("Failed to delete video from Cloudinary");
+          return;
+        }
+      } catch (error) {
+        console.error("Error deleting video from Cloudinary:", error);
+        return;
+      }
+    }
+
+    // Remove lecture from curriculum
+    cpyCourseCurriculumFormData = cpyCourseCurriculumFormData.filter(
+      (_, index) => index !== currentIndex
+    );
+
+    setCourseCurriculumFormData(cpyCourseCurriculumFormData);
+
+    // Update database after deletion
+    await updateDatabaseCurriculum(cpyCourseCurriculumFormData);
   }
 
   return (
@@ -219,15 +291,15 @@ function CourseCurriculum() {
         >
           Add Lecture
         </Button>
-        {mediaUploadProgress ? (
+        {mediaUploadProgress && (
           <MediaProgressbar
             isMediaUploading={mediaUploadProgress}
             progress={mediaUploadProgressPercentage}
           />
-        ) : null}
+        )}
         <div className="mt-4 space-y-4">
           {courseCurriculumFormData.map((curriculumItem, index) => (
-            <div className="border p-5 rounded-md">
+            <div key={index} className="border p-5 rounded-md">
               <div className="flex gap-5 items-center">
                 <h3 className="font-semibold">Lecture {index + 1}</h3>
                 <Input
@@ -252,31 +324,40 @@ function CourseCurriculum() {
               </div>
               <div className="mt-6">
                 {courseCurriculumFormData[index]?.videoUrl ? (
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 items-start">
                     <VideoPlayer
                       url={courseCurriculumFormData[index]?.videoUrl}
                       width="450px"
                       height="200px"
                     />
-                    <Button onClick={() => handleReplaceVideo(index)}>
-                      Replace Video
-                    </Button>
-                    <Button
-                      onClick={() => handleDeleteLecture(index)}
-                      className="bg-red-900"
-                    >
-                      Delete Lecture
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        onClick={() => handleReplaceVideo(index)}
+                        disabled={uploadingIndex === index}
+                      >
+                        {uploadingIndex === index ? "Uploading..." : "Replace Video"}
+                      </Button>
+                      <Button
+                        onClick={() => handleDeleteLecture(index)}
+                        variant="destructive"
+                      >
+                        Delete Lecture
+                      </Button>
+                    </div>
                   </div>
                 ) : (
-                  <Input
-                    type="file"
-                    accept="video/*"
-                    onChange={(event) =>
-                      handleSingleLectureUpload(event, index)
-                    }
-                    className="mb-4"
-                  />
+                  <div className="flex flex-col gap-2">
+                    <Input
+                      type="file"
+                      accept="video/*"
+                      onChange={(event) => handleSingleLectureUpload(event, index)}
+                      className="mb-4"
+                      disabled={uploadingIndex === index}
+                    />
+                    {uploadingIndex === index && (
+                      <p className="text-sm text-blue-600">Uploading video...</p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

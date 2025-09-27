@@ -96,7 +96,7 @@ function StudentHomePage() {
             src={course?.image}
             alt={course?.title}
             className="w-full h-72 object-cover group-hover:scale-105 transition-transform duration-300"
-        
+
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
@@ -279,7 +279,7 @@ function StudentHomePage() {
           </div>
 
           {/* Enhanced Courses Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 bg-gradient-to-r from-blue-50 to-indigo-50 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {studentViewCoursesList && studentViewCoursesList.length > 0 ? (
               studentViewCoursesList.map((courseItem) => (
                 <CourseCard key={courseItem._id || courseItem.id} course={courseItem} />

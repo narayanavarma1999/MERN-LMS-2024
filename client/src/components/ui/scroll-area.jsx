@@ -10,7 +10,7 @@ const ScrollArea = React.forwardRef(({ className, children, ...props }, ref) => 
     {...props}>
     {/* 🎯 Enhanced Viewport with Gradient Border */}
     <ScrollAreaPrimitive.Viewport 
-      className="h-full w-full rounded-[inherit] bg-gradient-to-br from-white to-gray-50/80 backdrop-blur-sm"
+      className="h-full w-full rounded-[inherit] bg-gradient-to-br bg-gradient-to-br from-slate-900 via-blue-900/20 to-slate-800 backdrop-blur-sm"
     >
       {children}
     </ScrollAreaPrimitive.Viewport>

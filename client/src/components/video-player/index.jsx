@@ -20,8 +20,9 @@ function VideoPlayer({
   height = "100%",
   url,
   title = "Premium Content",
+  onProgressUpdate,
+  progressData,
 }) {
-
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(0.8);
   const [muted, setMuted] = useState(false);
@@ -32,18 +33,21 @@ function VideoPlayer({
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [bufferProgress, setBufferProgress] = useState(0);
   const [isBuffering, setIsBuffering] = useState(false);
-
+  const [duration, setDuration] = useState(0);
 
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [selectedQuality, setSelectedQuality] = useState("Auto");
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
-  const [volumeLevel, setVolumeLevel] = useState(80); // 0-100 scale for display
-  const [showVolumeIndicator, setShowVolumeIndicator] = useState(false);
+  const [volumeLevel, setVolumeLevel] = useState(80);
+  const [showTimestampPreview, setShowTimestampPreview] = useState(false);
+  const [previewTime, setPreviewTime] = useState(0);
+  const [previewPosition, setPreviewPosition] = useState(0);
 
   const playerRef = useRef(null);
   const playerContainerRef = useRef(null);
+  const progressBarRef = useRef(null);
   const controlsTimeoutRef = useRef(null);
   const bufferingTimeoutRef = useRef(null);
   const volumeIndicatorTimeoutRef = useRef(null);
@@ -51,9 +55,69 @@ function VideoPlayer({
   const qualityOptions = ["Auto", "4K", "1080p", "720p", "480p", "360p"];
   const playbackRates = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 
-  const handlePlayAndPause = useCallback(() => {
-    setPlaying(prev => !prev);
-  }, []);
+  // Enhanced timestamp click functionality
+  const handleProgressBarClick = useCallback((e) => {
+    if (!progressBarRef.current || !duration) return;
+    
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const clickPosition = (e.clientX - rect.left) / rect.width;
+    const clampedPosition = Math.max(0, Math.min(1, clickPosition));
+    const newTime = clampedPosition * duration;
+    
+    // Seek to the clicked position
+    playerRef.current?.seekTo(newTime);
+    setPlayed(clampedPosition);
+    setPlaying(true);
+    
+    // Update progress if callback provided
+    if (onProgressUpdate && progressData) {
+      onProgressUpdate({
+        ...progressData,
+        currentTime: newTime,
+        progressValue: clampedPosition,
+        duration: duration
+      });
+    }
+  }, [duration, onProgressUpdate, progressData]);
+
+  // Enhanced seek with preview
+  const handleSeekMouseMove = useCallback((e) => {
+    if (!progressBarRef.current || !seeking) return;
+    
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const newPosition = (e.clientX - rect.left) / rect.width;
+    const clampedPosition = Math.max(0, Math.min(1, newPosition));
+    
+    setPreviewTime(clampedPosition * duration);
+    setPreviewPosition(clampedPosition * 100);
+    setShowTimestampPreview(true);
+  }, [seeking, duration]);
+
+  const handleSeekChange = useCallback((newValue) => {
+    const newPosition = newValue[0] / 100;
+    setPlayed(newPosition);
+    setPreviewTime(newPosition * duration);
+    setPreviewPosition(newValue[0]);
+    setSeeking(true);
+    setShowTimestampPreview(true);
+  }, [duration]);
+
+  const handleSeekMouseUp = useCallback(() => {
+    setSeeking(false);
+    setShowTimestampPreview(false);
+    playerRef.current?.seekTo(played);
+    setPlaying(true);
+    
+    // Update progress
+    if (onProgressUpdate && progressData) {
+      onProgressUpdate({
+        ...progressData,
+        currentTime: played * duration,
+        progressValue: played,
+        duration: duration
+      });
+    }
+  }, [played, duration, onProgressUpdate, progressData]);
 
   const handleProgress = useCallback((state) => {
     if (!seeking) {
@@ -76,23 +140,27 @@ function VideoPlayer({
     setIsBuffering(false);
   }, []);
 
-  const handleRewind = useCallback(() => {
-    playerRef?.current?.seekTo(playerRef?.current?.getCurrentTime() - 10);
+  const handleDuration = useCallback((duration) => {
+    setDuration(duration);
   }, []);
+
+  const handlePlayAndPause = useCallback(() => {
+    setPlaying(prev => !prev);
+  }, []);
+
+  const handleRewind = useCallback(() => {
+    const currentTime = playerRef?.current?.getCurrentTime() || 0;
+    const newTime = Math.max(0, currentTime - 10);
+    playerRef?.current?.seekTo(newTime);
+    setPlayed(newTime / duration);
+  }, [duration]);
 
   const handleForward = useCallback(() => {
-    playerRef?.current?.seekTo(playerRef?.current?.getCurrentTime() + 10);
-  }, []);
-
-  const handleSeekChange = useCallback((newValue) => {
-    setPlayed(newValue[0]);
-    setSeeking(true);
-  }, []);
-
-  const handleSeekMouseUp = useCallback(() => {
-    setSeeking(false);
-    playerRef.current?.seekTo(played);
-  }, [played]);
+    const currentTime = playerRef?.current?.getCurrentTime() || 0;
+    const newTime = Math.min(duration, currentTime + 10);
+    playerRef?.current?.seekTo(newTime);
+    setPlayed(newTime / duration);
+  }, [duration]);
 
   const handleVolumeChange = useCallback((newValue) => {
     const newVolume = newValue[0] / 100;
@@ -100,20 +168,20 @@ function VideoPlayer({
     setVolumeLevel(newValue[0]);
     setMuted(newValue[0] === 0);
 
-    setShowVolumeIndicator(true);
+    setShowVolumeSlider(true);
     clearTimeout(volumeIndicatorTimeoutRef.current);
     volumeIndicatorTimeoutRef.current = setTimeout(() => {
-      setShowVolumeIndicator(false);
+      setShowVolumeSlider(false);
     }, 2000);
   }, []);
 
   const handleVolumeClick = useCallback((e) => {
     e.stopPropagation();
     setMuted(prev => !prev);
-    setShowVolumeIndicator(true);
+    setShowVolumeSlider(true);
     clearTimeout(volumeIndicatorTimeoutRef.current);
     volumeIndicatorTimeoutRef.current = setTimeout(() => {
-      setShowVolumeIndicator(false);
+      setShowVolumeSlider(false);
     }, 2000);
   }, []);
 
@@ -128,6 +196,7 @@ function VideoPlayer({
   }, []);
 
   const formatTime = useCallback((seconds) => {
+    if (!seconds || isNaN(seconds)) return "0:00";
     const date = new Date(seconds * 1000);
     const hh = date.getUTCHours();
     const mm = date.getUTCMinutes();
@@ -173,9 +242,9 @@ function VideoPlayer({
         'f': () => handleFullScreen(),
         'm': () => {
           setMuted(prev => !prev);
-          setShowVolumeIndicator(true);
+          setShowVolumeSlider(true);
           clearTimeout(volumeIndicatorTimeoutRef.current);
-          volumeIndicatorTimeoutRef.current = setTimeout(() => setShowVolumeIndicator(false), 2000);
+          volumeIndicatorTimeoutRef.current = setTimeout(() => setShowVolumeSlider(false), 2000);
         },
         'ArrowLeft': () => handleRewind(),
         'ArrowRight': () => handleForward(),
@@ -201,7 +270,6 @@ function VideoPlayer({
     document.addEventListener('fullscreenchange', handleFullScreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullScreenChange);
   }, []);
-
 
   useEffect(() => {
     setVolumeLevel(volume * 100);
@@ -231,6 +299,7 @@ function VideoPlayer({
         setShowSettingsMenu(false);
         setShowQualityMenu(false);
         setShowVolumeSlider(false);
+        setShowTimestampPreview(false);
       }}
       onClick={handlePlayAndPause}
       tabIndex={0}
@@ -245,7 +314,20 @@ function VideoPlayer({
         </div>
       )}
 
-      {/* Volume Level Indicator - Centered like the first component */}
+      {/* Timestamp Preview */}
+      {showTimestampPreview && (
+        <div 
+          className="absolute bottom-16 bg-black/90 backdrop-blur-lg rounded-lg px-3 py-2 z-30 border border-gray-600 shadow-2xl transition-all duration-100"
+          style={{ left: `calc(${previewPosition}% - 40px)` }}
+        >
+          <div className="text-white text-sm font-medium whitespace-nowrap">
+            {formatTime(previewTime)}
+          </div>
+          <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-black/90 rotate-45 border-b border-r border-gray-600" />
+        </div>
+      )}
+
+      {/* Volume Level Indicator */}
       {showVolumeSlider && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 backdrop-blur-lg rounded-2xl p-6 z-40 border border-gray-700 shadow-2xl">
           <div className="text-center mb-4">
@@ -276,6 +358,7 @@ function VideoPlayer({
         muted={muted}
         playbackRate={playbackRate}
         onProgress={handleProgress}
+        onDuration={handleDuration}
         onBuffer={handleBuffer}
         onBufferEnd={handleBufferEnd}
         onError={(e) => console.error("Video error:", e)}
@@ -322,27 +405,49 @@ function VideoPlayer({
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="px-4 pb-3">
-          <div className="relative mb-2">
+        {/* Progress Bar with Enhanced Click Area */}
+        <div className="px-4 pb-3 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+          <div 
+            ref={progressBarRef}
+            className="relative mb-2 group/progress"
+            onClick={handleProgressBarClick}
+            onMouseMove={handleSeekMouseMove}
+            onMouseLeave={() => setShowTimestampPreview(false)}
+          >
+            {/* Buffer Progress */}
             <div className="absolute top-0 left-0 w-full h-1 bg-gray-600 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gray-400 transition-all duration-300"
                 style={{ width: `${bufferProgress * 100}%` }}
               />
             </div>
-            <Slider
-              value={[played * 100]}
-              max={100}
-              step={0.1}
-              onValueChange={handleSeekChange}
-              onValueCommit={handleSeekMouseUp}
-              className="w-full relative z-10 cursor-pointer h-1"
-            />
+            
+            {/* Main Progress Bar with Enhanced Hit Area */}
+            <div className="relative h-2 flex items-center cursor-pointer">
+              <Slider
+                value={[played * 100]}
+                max={100}
+                step={0.1}
+                onValueChange={handleSeekChange}
+                onValueCommit={handleSeekMouseUp}
+                className="w-full relative z-10 cursor-pointer h-1"
+              />
+              
+              {/* Enhanced Clickable Area */}
+              <div className="absolute inset-0 z-0 cursor-pointer" />
+              
+              {/* Progress Indicator Dot */}
+              <div 
+                className="absolute w-4 h-4 bg-white rounded-full shadow-lg transform -translate-y-1/2 transition-all duration-150 group-hover/progress:scale-125 z-20"
+                style={{ left: `calc(${played * 100}% - 8px)`, top: '50%' }}
+              />
+            </div>
           </div>
+          
+          {/* Time Display */}
           <div className="flex justify-between text-xs text-gray-300">
-            <span>{formatTime(played * (playerRef?.current?.getDuration() || 0))}</span>
-            <span>{formatTime(playerRef?.current?.getDuration() || 0)}</span>
+            <span>{formatTime(played * duration)}</span>
+            <span>{formatTime(duration)}</span>
           </div>
         </div>
 

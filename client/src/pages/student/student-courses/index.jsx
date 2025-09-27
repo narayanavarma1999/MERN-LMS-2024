@@ -81,7 +81,7 @@ function StudentCoursesPage() {
           {/* Progress Badge */}
           <div className="absolute top-4 left-4">
             <div className={`px-3 py-1 rounded-full text-white text-xs font-bold bg-gradient-to-r ${getProgressColor(progress)} shadow-lg`}>
-              {progress}% Complete
+              {progress ? progress : 0}% Complete
             </div>
           </div>
 

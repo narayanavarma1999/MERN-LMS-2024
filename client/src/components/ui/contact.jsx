@@ -233,6 +233,7 @@ const Contact = () => {
                                 )}
                             </button>
                         </form>
+                        <p className='font-normal mt-16  text-gray-600 text-base'> 🎉 We're open to hear from you. Your ideas, suggestions and experiences are valued. Please feel free to share your experiences and valuable feedback with us. We would love to hear from you.</p>
                     </div>
 
                     {/* FAQ & Additional Info */}
@@ -259,11 +260,11 @@ const Contact = () => {
                             <div className="space-y-2 font-semibold text-gray-900">
                                 <div className="flex justify-between">
                                     <span>Monday - Friday</span>
-                                    <span>9:00 AM - 6:00 PM EST</span>
+                                    <span>9:00 AM - 6:00 PM IST</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Saturday</span>
-                                    <span>10:00 AM - 4:00 PM EST</span>
+                                    <span>10:00 AM - 4:00 PM IST</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Sunday</span>

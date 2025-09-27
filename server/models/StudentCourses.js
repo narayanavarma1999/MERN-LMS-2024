@@ -12,6 +12,8 @@ const StudentCoursesSchema = new mongoose.Schema({
       courseImage: String,
     },
   ],
+}, {
+  timestamps: true
 });
 
 module.exports = mongoose.model("StudentCourses", StudentCoursesSchema);

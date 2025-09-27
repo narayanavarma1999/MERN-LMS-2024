@@ -1,199 +1,282 @@
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader, 
-  DialogTitle
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import VideoPlayer from "@/components/video-player";
 import { AuthContext } from "@/context/auth-context";
 import { StudentContext } from "@/context/student-context";
+import { setProgress } from "@/lib/appstore/progress-slice";
 import {
   getCurrentCourseProgressService,
   markLectureAsViewedService,
   resetCourseProgressService,
 } from "@/services";
-import { 
-  Check, 
-  ChevronLeft, 
-  ChevronRight, 
-  Play, 
-  Trophy,
-  Star,
-  Zap,
-  BookOpen,
-  Clock,
-  Award,
-  Lock,
-  Sparkles,
-  Rocket,
-  Target
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight, Video,
+  Clock, ChevronDown,
+  ChevronUp
 } from "lucide-react";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useCallback } from "react";
 import Confetti from "react-confetti";
+import { useDispatch } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
 function StudentViewCourseProgressPage() {
   const navigate = useNavigate();
   const { auth } = useContext(AuthContext);
-  const { studentCurrentCourseProgress, setStudentCurrentCourseProgress } =
-    useContext(StudentContext);
+  const { studentCurrentCourseProgress, setStudentCurrentCourseProgress } = useContext(StudentContext);
   const [lockCourse, setLockCourse] = useState(false);
   const [currentLecture, setCurrentLecture] = useState(null);
-  const [showCourseCompleteDialog, setShowCourseCompleteDialog] =
-    useState(false);
+  const [showCourseCompleteDialog, setShowCourseCompleteDialog] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [isSideBarOpen, setIsSideBarOpen] = useState(true);
+  const [expandedSections, setExpandedSections] = useState(new Set([0]));
+  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useDispatch();
   const { id } = useParams();
 
-  async function fetchCurrentCourseProgress() {
-    const response = await getCurrentCourseProgressService(auth?.user?._id, id);
-    if (response?.success) {
-      if (!response?.data?.isPurchased) {
-        setLockCourse(true);
-      } else {
-        setStudentCurrentCourseProgress({
-          courseDetails: response?.data?.courseDetails,
-          progress: response?.data?.progress,
-        });
+  // Memoize curriculumSections to prevent recreation on every render
+  const curriculumSections = [
+    {
+      title: "Introduction",
+      lectures: studentCurrentCourseProgress?.courseDetails?.curriculum?.slice(0, 3) || []
+    },
+    {
+      title: "Core Concepts",
+      lectures: studentCurrentCourseProgress?.courseDetails?.curriculum?.slice(3, 8) || []
+    },
+    {
+      title: "Advanced Topics",
+      lectures: studentCurrentCourseProgress?.courseDetails?.curriculum?.slice(8, 15) || []
+    },
+    {
+      title: "Practice & Projects",
+      lectures: studentCurrentCourseProgress?.courseDetails?.curriculum?.slice(15) || []
+    }
+  ].filter(section => section.lectures.length > 0);
 
-        if (response?.data?.completed) {
-          setCurrentLecture(response?.data?.courseDetails?.curriculum[0]);
-          setShowCourseCompleteDialog(true);
-          setShowConfetti(true);
-          return;
-        }
+  // Memoize fetch function to prevent infinite loops
+  const fetchCurrentCourseProgress = useCallback(async () => {
+    if (!auth?.user?._id || !id) return;
 
-        if (response?.data?.progress?.length === 0) {
-          setCurrentLecture(response?.data?.courseDetails?.curriculum[0]);
+    try {
+      setIsLoading(true);
+      const response = await getCurrentCourseProgressService(auth.user._id, id);
+      if (response?.success) {
+        if (!response?.data?.isPurchased) {
+          setLockCourse(true);
         } else {
-          const lastIndexOfViewedAsTrue = response?.data?.progress.reduceRight(
-            (acc, obj, index) => {
-              return acc === -1 && obj.viewed ? index : acc;
-            },
-            -1
-          );
+          setStudentCurrentCourseProgress({
+            courseDetails: response?.data?.courseDetails,
+            progress: response?.data?.progress,
+          });
 
-          setCurrentLecture(
-            response?.data?.courseDetails?.curriculum[
-              lastIndexOfViewedAsTrue + 1
-            ]
-          );
+          if (response?.data?.completed) {
+            setCurrentLecture(response?.data?.courseDetails?.curriculum[0]);
+            setShowCourseCompleteDialog(true);
+            setShowConfetti(true);
+            return;
+          }
+
+          // Set current lecture logic
+          if (response?.data?.progress?.length === 0) {
+            setCurrentLecture(response?.data?.courseDetails?.curriculum[0]);
+          } else {
+            const lastViewedIndex = response?.data?.progress.findLastIndex
+              ? response.data.progress.findLastIndex(p => p.viewed)
+              : response.data.progress.reduceRight((acc, p, idx) => acc === -1 && p.viewed ? idx : acc, -1);
+
+            const nextLectureIndex = lastViewedIndex !== -1 ? lastViewedIndex + 1 : 0;
+
+            setCurrentLecture(
+              response?.data?.courseDetails?.curriculum[nextLectureIndex] ||
+              response?.data?.courseDetails?.curriculum[0]
+            );
+          }
         }
       }
+    } catch (error) {
+      console.error("Error fetching course progress:", error);
+    } finally {
+      setIsLoading(false);
     }
-  }
+  }, [auth?.user?._id, id, setStudentCurrentCourseProgress]);
 
-  async function updateCourseProgress() {
-    if (currentLecture) {
+  // Memoize update function
+  const updateCourseProgress = useCallback(async () => {
+    if (!currentLecture || !auth?.user?._id || !studentCurrentCourseProgress?.courseDetails?._id) return;
+
+    try {
       const response = await markLectureAsViewedService(
-        auth?.user?._id,
-        studentCurrentCourseProgress?.courseDetails?._id,
+        auth.user._id,
+        studentCurrentCourseProgress.courseDetails._id,
         currentLecture._id
       );
 
       if (response?.success) {
         fetchCurrentCourseProgress();
       }
+    } catch (error) {
+      console.error("Error updating progress:", error);
     }
-  }
+  }, [currentLecture, auth?.user?._id, studentCurrentCourseProgress?.courseDetails?._id, fetchCurrentCourseProgress]);
 
-  async function handleRewatchCourse() {
-    const response = await resetCourseProgressService(
-      auth?.user?._id,
-      studentCurrentCourseProgress?.courseDetails?._id
-    );
+  // Memoize toggle function
+  const toggleLectureCompletion = useCallback(async (lecture, isCurrentlyCompleted) => {
+    if (!auth?.user?._id || !studentCurrentCourseProgress?.courseDetails?._id) return;
 
-    if (response?.success) {
-      setCurrentLecture(null);
-      setShowConfetti(false);
-      setShowCourseCompleteDialog(false);
-      fetchCurrentCourseProgress();
+    try {
+      if (isCurrentlyCompleted) {
+        // For now, just refetch - implement proper unmark if backend supports it
+        fetchCurrentCourseProgress();
+      } else {
+        const response = await markLectureAsViewedService(
+          auth.user._id,
+          studentCurrentCourseProgress.courseDetails._id,
+          lecture._id
+        );
+
+        if (response?.success) {
+          await fetchCurrentCourseProgress();
+
+          // Move to next lecture if this was the current one
+          if (currentLecture?._id === lecture._id) {
+            const currentIndex = studentCurrentCourseProgress?.courseDetails?.curriculum?.findIndex(
+              l => l._id === lecture._id
+            );
+            if (currentIndex !== -1 && currentIndex + 1 < studentCurrentCourseProgress?.courseDetails?.curriculum?.length) {
+              setCurrentLecture(studentCurrentCourseProgress.courseDetails.curriculum[currentIndex + 1]);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error toggling lecture completion:", error);
     }
-  }
+  }, [auth?.user?._id, studentCurrentCourseProgress, currentLecture, fetchCurrentCourseProgress]);
 
+  const toggleSection = useCallback((sectionIndex) => {
+    setExpandedSections(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(sectionIndex)) {
+        newExpanded.delete(sectionIndex);
+      } else {
+        newExpanded.add(sectionIndex);
+      }
+      return newExpanded;
+    });
+  }, []);
+
+  const handleRewatchCourse = useCallback(async () => {
+    if (!auth?.user?._id || !studentCurrentCourseProgress?.courseDetails?._id) return;
+
+    try {
+      const response = await resetCourseProgressService(
+        auth.user._id,
+        studentCurrentCourseProgress.courseDetails._id
+      );
+
+      if (response?.success) {
+        setCurrentLecture(null);
+        setShowConfetti(false);
+        setShowCourseCompleteDialog(false);
+        fetchCurrentCourseProgress();
+      }
+    } catch (error) {
+      console.error("Error resetting course:", error);
+    }
+  }, [auth?.user?._id, studentCurrentCourseProgress?.courseDetails?._id, fetchCurrentCourseProgress]);
+
+  // Initial fetch - only on mount
   useEffect(() => {
     fetchCurrentCourseProgress();
-  }, [id]);
+  }, [fetchCurrentCourseProgress]); // Now this is stable
 
+  // Auto-mark as completed when video reaches 100%
   useEffect(() => {
-    if (currentLecture?.progressValue === 1) updateCourseProgress();
-  }, [currentLecture]);
+    if (currentLecture?.progressValue === 1) {
+      updateCourseProgress();
+    }
+  }, [currentLecture?.progressValue, updateCourseProgress]); // Only depend on specific values
 
+  // Confetti timeout
   useEffect(() => {
-    if (showConfetti) setTimeout(() => setShowConfetti(false), 15000);
+    if (showConfetti) {
+      const timer = setTimeout(() => setShowConfetti(false), 5000);
+      return () => clearTimeout(timer);
+    }
   }, [showConfetti]);
 
-  // Calculate progress percentage
-  const progressPercentage = studentCurrentCourseProgress?.progress 
-    ? Math.round((studentCurrentCourseProgress.progress.filter(p => p.viewed).length / 
-                 studentCurrentCourseProgress.courseDetails?.curriculum?.length) * 100)
+  // Auto-expand section with current lecture - fixed dependencies
+  useEffect(() => {
+    if (currentLecture && curriculumSections.length > 0) {
+      setExpandedSections(prev => {
+        const newExpanded = new Set(prev);
+        curriculumSections.forEach((section, index) => {
+          if (section.lectures.some(lecture => lecture._id === currentLecture._id)) {
+            newExpanded.add(index);
+          }
+        });
+        return newExpanded;
+      });
+    }
+  }, [currentLecture?._id, curriculumSections.length]);
+
+  const progressPercentage = studentCurrentCourseProgress?.progress && studentCurrentCourseProgress.courseDetails?.curriculum
+    ? Math.round(
+      (studentCurrentCourseProgress.progress.filter(p => p.viewed).length /
+        studentCurrentCourseProgress.courseDetails.curriculum.length) * 100
+    )
     : 0;
 
+  dispatch(setProgress(progressPercentage))
+
+  const completedLectures = studentCurrentCourseProgress?.progress?.filter(p => p.viewed).length || 0;
+  const totalLectures = studentCurrentCourseProgress?.courseDetails?.curriculum?.length || 0;
+
+  // Format duration from seconds to MM:SS
+  const formatDuration = (seconds) => {
+    if (!seconds) return "15:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-900">
+        <div className="text-white text-lg">Loading course content...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/10 to-pink-500/5 animate-pulse-slow" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-400/10 via-transparent to-transparent" />
-      
-      {showConfetti && <Confetti numberOfPieces={200} gravity={0.2} />}
-      
-      {/* Floating Particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(15)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-blue-400/30 rounded-full animate-float"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${i * 0.5}s`,
-              animationDuration: `${3 + Math.random() * 2}s`
-            }}
-          />
-        ))}
+    <div className="flex flex-col h-screen bg-slate-900 text-white relative overflow-hidden">
+      {/* Your Background Style */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-900/10 to-slate-800">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(100,100,100,0.15)_1px,transparent_0)] bg-[length:20px_20px]"></div>
       </div>
 
-      {/* Header */}
-      <div className="relative z-10 flex items-center justify-between p-6 bg-gradient-to-r from-white/5 to-white/10 backdrop-blur-xl border-b border-white/10">
+      {showConfetti && <Confetti numberOfPieces={200} gravity={0.2} />}
+
+      {/* Minimal Header */}
+      <div className="relative z-10 flex items-center justify-between p-4 bg-slate-800/90 border-b border-slate-700">
+        <Button
+          onClick={() => navigate("/student-courses")}
+          className="flex items-center space-x-2 text-white hover:text-gray-100 bg-slate-700 hover:bg-slate-600"
+          variant="ghost"
+        >
+          <ChevronLeft className="h-5 w-5" />
+          <span className="text-medium font-small">Back to Courses</span>
+        </Button>
+
         <div className="flex items-center space-x-4">
+          <div className="text-sm text-gray-300">
+            {completedLectures} of {totalLectures} lessons
+          </div>
           <Button
-            onClick={() => navigate("/student-courses")}
-            className="bg-white/10 hover:bg-white/20 backdrop-blur-lg border border-white/20 text-white hover:text-white transition-all duration-300 hover:scale-105"
-            variant="ghost"
-            size="sm"
-          >
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Back to Courses
-          </Button>
-          <div className="flex items-center space-x-3">
-            <BookOpen className="h-6 w-6 text-blue-400" />
-            <h1 className="text-xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-              {studentCurrentCourseProgress?.courseDetails?.title}
-            </h1>
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          {/* Progress Indicator */}
-          <div className="flex items-center space-x-3 bg-black/30 backdrop-blur-lg rounded-2xl px-4 py-2 border border-white/10">
-            <Target className="h-4 w-4 text-green-400" />
-            <span className="text-sm font-medium">{progressPercentage}% Complete</span>
-            <div className="w-20 bg-gray-700 rounded-full h-2">
-              <div 
-                className="bg-gradient-to-r from-green-400 to-cyan-400 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${progressPercentage}%` }}
-              />
-            </div>
-          </div>
-          
-          <Button 
             onClick={() => setIsSideBarOpen(!isSideBarOpen)}
-            className="bg-white/10 hover:bg-white/20 backdrop-blur-lg border border-white/20 text-white transition-all duration-300 hover:scale-110"
+            className="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-md border border-slate-600"
           >
             {isSideBarOpen ? (
               <ChevronRight className="h-5 w-5" />
@@ -204,264 +287,141 @@ function StudentViewCourseProgressPage() {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content - NamasteDev Layout */}
       <div className="flex flex-1 overflow-hidden relative z-10">
-        {/* Video Player Area */}
-        <div
-          className={`flex-1 transition-all duration-500 ${
-            isSideBarOpen ? "mr-96" : ""
-          }`}
-        >
-          <div className="h-full flex flex-col">
-            <div className="flex-1 relative">
-              <VideoPlayer
-                width="100%"
-                height="100%"
-                url={currentLecture?.videoUrl}
-                onProgressUpdate={setCurrentLecture}
-                progressData={currentLecture}
-              />
+        {/* Video Player - Properly Aligned */}
+        <div className={`transition-all duration-300 bg-black ${isSideBarOpen ? "flex-1" : "w-full"}`}>
+          {currentLecture ? (
+            <VideoPlayer
+              width="100%"
+              height="100%"
+              url={currentLecture?.videoUrl}
+              onProgressUpdate={setCurrentLecture}
+              progressData={currentLecture}
+              duration={currentLecture?.duration}
+              title={studentCurrentCourseProgress?.courseDetails?.title}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-white">
+              Select a lecture to begin
             </div>
-            
-            {/* Lecture Info Card */}
-            <div className="p-6 bg-gradient-to-r from-white/5 to-white/10 backdrop-blur-xl border-t border-white/10">
-              <div className="max-w-4xl mx-auto">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent mb-2">
-                      {currentLecture?.title || "Select a lecture to begin"}
-                    </h2>
-                    {currentLecture && (
-                      <div className="flex items-center space-x-4 text-sm text-blue-200">
-                        <div className="flex items-center space-x-1">
-                          <Clock className="h-4 w-4" />
-                          <span>Lecture {studentCurrentCourseProgress?.courseDetails?.curriculum?.indexOf(currentLecture) + 1} of {studentCurrentCourseProgress?.courseDetails?.curriculum?.length}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Zap className="h-4 w-4" />
-                          <span>{(currentLecture.duration || "15:00")} min</span>
-                        </div>
-                      </div>
-                    )}
+          )}
+        </div>
+
+        {/* NamasteDev Sidebar */}
+        {isSideBarOpen && (
+          <div className="w-full lg:w-[30%] bg-slate-800 border-l border-slate-700 flex flex-col h-full">
+            {/* Sidebar Header */}
+            <div className="border-b border-slate-700 bg-slate-800 flex-shrink-0">
+              <div className="p-4 flex justify-between items-center">
+                <div className="font-semibold text-lg text-white">
+                  {studentCurrentCourseProgress?.courseDetails?.title}
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="px-4 pb-4">
+                <div className="mb-2">
+                  <div className="w-full h-3 bg-slate-600 rounded-lg overflow-hidden">
+                    <div
+                      className="h-full bg-green-500 transition-all duration-300"
+                      style={{ width: `${progressPercentage}%` }}
+                    />
                   </div>
-                  
-                  {currentLecture && (
-                    <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-300 hover:scale-105">
-                      <Check className="h-4 w-4 mr-2" />
-                      Mark Complete
-                    </Button>
-                  )}
+                </div>
+                <div className="flex justify-between text-sm text-gray-300">
+                  <span>{completedLectures} of {totalLectures} lessons</span>
+                  <span className="font-semibold text-green-400">{progressPercentage ? progressPercentage : 0}% complete</span>
                 </div>
               </div>
             </div>
+
+            {/* Course Content */}
+            <ScrollArea className="flex-1">
+              <div className="divide-y divide-slate-700">
+                {curriculumSections.map((section, sectionIndex) => {
+                  const isExpanded = expandedSections.has(sectionIndex);
+
+                  return (
+                    <div key={sectionIndex} className="bg-slate-800">
+                      {/* Section Header */}
+                      <button
+                        onClick={() => toggleSection(sectionIndex)}
+                        className="flex flex-1 items-center justify-between font-medium transition-all p-4 bg-slate-800 text-white w-full text-left hover:bg-slate-700"
+                      >
+                        <div className="font-bold text-white">{section.title}</div>
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-gray-400" />
+                        )}
+                      </button>
+
+                      {/* Section Lectures */}
+                      {isExpanded && (
+                        <div className="bg-slate-800">
+                          {section.lectures.map((lecture) => {
+                            const isCompleted = studentCurrentCourseProgress?.progress?.find(
+                              p => p.lectureId === lecture._id
+                            )?.viewed;
+                            const isCurrent = currentLecture?._id === lecture._id;
+
+                            return (
+                              <div
+                                key={lecture._id}
+                                className={`cursor-pointer relative border-t border-slate-700 w-full grid grid-cols-12 items-center transition-colors ${isCurrent ? 'bg-blue-500/20' : 'bg-slate-800 hover:bg-slate-700'
+                                  }`}
+                                onClick={() => setCurrentLecture(lecture)}
+                              >
+                                <div className="flex min-h-[4.5rem] col-span-10 pl-4 pt-2 pb-2">
+                                  <div className="mr-2 font-bold text-xl">
+                                    <Video className="h-5 w-5 text-gray-300" />
+                                  </div>
+                                  <div className="w-full">
+                                    <div className="text-base flex flex-col">
+                                      <div className="font-bold text-white">
+                                        {lecture.title}
+                                      </div>
+                                      <div className="flex justify-between items-center mt-2">
+                                        <div className="flex gap-x-3 items-center">
+                                          <div className="flex gap-x-1 items-center text-gray-400">
+                                            <Clock className="h-3 w-3" />
+                                            <p className="text-xs">{formatDuration(lecture.duration)}</p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Checkbox with toggle functionality */}
+                                <div
+                                  className="col-span-2 flex justify-center items-center ml-2 lg:ml-4"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <button
+                                    onClick={() => toggleLectureCompletion(lecture, isCompleted)}
+                                    className={`h-5 w-5 border rounded flex items-center justify-center transition-all ${isCompleted
+                                      ? 'bg-green-500 border-green-500'
+                                      : 'border-gray-400 bg-slate-700 hover:bg-slate-600'
+                                      }`}
+                                  >
+                                    {isCompleted && <Check className="h-4 w-4 text-white" />}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
           </div>
-        </div>
-
-        {/* Sidebar */}
-        <div
-          className={`fixed top-[88px] right-0 bottom-0 w-96 bg-gradient-to-b from-slate-800/95 to-slate-900/95 backdrop-blur-2xl border-l border-white/10 transition-all duration-500 z-20 ${
-            isSideBarOpen ? "translate-x-0 shadow-2xl" : "translate-x-full"
-          }`}
-        >
-          <Tabs defaultValue="content" className="h-full flex flex-col">
-            {/* Enhanced Tabs */}
-            <TabsList className="grid w-full grid-cols-2 p-0 h-16 bg-gradient-to-r from-blue-500/10 to-purple-500/10 backdrop-blur-lg">
-              <TabsTrigger
-                value="content"
-                className="text-white rounded-none h-full data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500/20 data-[state=active]:to-purple-500/20 data-[state=active]:border-b-2 data-[state=active]:border-blue-400 transition-all duration-300"
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Course Content
-              </TabsTrigger>
-              <TabsTrigger
-                value="overview"
-                className="text-white rounded-none h-full data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500/20 data-[state=active]:to-purple-500/20 data-[state=active]:border-b-2 data-[state=active]:border-blue-400 transition-all duration-300"
-              >
-                <BookOpen className="h-4 w-4 mr-2" />
-                Overview
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Course Content Tab */}
-            <TabsContent value="content" className="flex-1 overflow-hidden p-0 m-0">
-              <ScrollArea className="h-full">
-                <div className="p-6 space-y-3">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white">Curriculum</h3>
-                    <span className="text-sm text-blue-300 bg-blue-500/20 px-2 py-1 rounded-full">
-                      {studentCurrentCourseProgress?.progress?.filter(p => p.viewed).length || 0} / {studentCurrentCourseProgress?.courseDetails?.curriculum?.length || 0} completed
-                    </span>
-                  </div>
-                  
-                  {studentCurrentCourseProgress?.courseDetails?.curriculum?.map(
-                    (item, index) => {
-                      const isCompleted = studentCurrentCourseProgress?.progress?.find(
-                        (progressItem) => progressItem.lectureId === item._id
-                      )?.viewed;
-                      const isCurrent = currentLecture?._id === item._id;
-                      
-                      return (
-                        <div
-                          key={item._id}
-                          className={`p-4 rounded-xl border transition-all duration-300 cursor-pointer group hover:scale-105 ${
-                            isCurrent 
-                              ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-blue-400/50 shadow-lg' 
-                              : isCompleted 
-                                ? 'bg-green-500/10 border-green-400/30' 
-                                : 'bg-white/5 border-white/10 hover:bg-white/10'
-                          }`}
-                          onClick={() => setCurrentLecture(item)}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                              isCompleted 
-                                ? 'bg-green-500/20 text-green-400' 
-                                : isCurrent
-                                  ? 'bg-blue-500/20 text-blue-400'
-                                  : 'bg-white/10 text-white/60'
-                            }`}>
-                              {isCompleted ? (
-                                <Check className="h-4 w-4" />
-                              ) : (
-                                <Play className="h-3 w-3" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <span className={`font-medium truncate ${
-                                  isCurrent ? 'text-blue-300' : 'text-white'
-                                }`}>
-                                  {item.title}
-                                </span>
-                                {isCurrent && (
-                                  <Sparkles className="h-4 w-4 text-yellow-400 animate-pulse" />
-                                )}
-                              </div>
-                              <div className="flex items-center space-x-2 text-xs text-white/60 mt-1">
-                                <span>Lecture {index + 1}</span>
-                                <span>•</span>
-                                <span>{item.duration || "15:00"} min</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                  )}
-                </div>
-              </ScrollArea>
-            </TabsContent>
-
-            {/* Overview Tab */}
-            <TabsContent value="overview" className="flex-1 overflow-hidden p-0 m-0">
-              <ScrollArea className="h-full">
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Course Overview</h3>
-                  
-                  <div className="space-y-6">
-                    <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                      <h4 className="font-semibold text-blue-300 mb-2 flex items-center">
-                        <BookOpen className="h-4 w-4 mr-2" />
-                        Description
-                      </h4>
-                      <p className="text-white/80 leading-relaxed">
-                        {studentCurrentCourseProgress?.courseDetails?.description}
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white/5 rounded-xl p-4 border border-white/10 text-center">
-                        <div className="text-2xl font-bold text-green-400">
-                          {studentCurrentCourseProgress?.courseDetails?.curriculum?.length || 0}
-                        </div>
-                        <div className="text-sm text-white/60">Total Lectures</div>
-                      </div>
-                      <div className="bg-white/5 rounded-xl p-4 border border-white/10 text-center">
-                        <div className="text-2xl font-bold text-blue-400">
-                          {Math.round((studentCurrentCourseProgress?.courseDetails?.curriculum?.length || 0) * 15 / 60)}h
-                        </div>
-                        <div className="text-sm text-white/60">Estimated Time</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
-        </div>
+        )}
       </div>
-
-      {/* Lock Course Dialog */}
-      <Dialog open={lockCourse}>
-        <DialogContent className="bg-gradient-to-br from-slate-800 to-slate-900 border-0 shadow-2xl max-w-md rounded-2xl">
-          <DialogHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-4">
-              <Lock className="h-8 w-8 text-red-400" />
-            </div>
-            <DialogTitle className="text-xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
-              Course Locked
-            </DialogTitle>
-            <DialogDescription className="text-white/80 text-center">
-              This course requires purchase to access the content. Please complete the purchase to continue learning.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex gap-3 mt-6">
-            <Button 
-              variant="outline" 
-              className="flex-1 border-white/20 text-white hover:bg-white/10"
-              onClick={() => navigate("/student-courses")}
-            >
-              Back to Courses
-            </Button>
-            <Button className="flex-1 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600">
-              Purchase Course
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Course Complete Dialog */}
-      <Dialog open={showCourseCompleteDialog}>
-        <DialogContent className="bg-gradient-to-br from-slate-800 to-slate-900 border-0 shadow-2xl max-w-lg rounded-2xl text-center">
-          <DialogHeader>
-            <div className="mx-auto w-20 h-20 bg-gradient-to-r from-green-500 to-cyan-500 rounded-full flex items-center justify-center mb-4">
-              <Trophy className="h-10 w-10 text-white" />
-            </div>
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">
-              Congratulations! 🎉
-            </DialogTitle>
-            <DialogDescription className="text-white/80 text-lg">
-              You've successfully completed the course!
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="bg-white/5 rounded-xl p-4 border border-white/10 mt-4">
-            <div className="flex items-center justify-center space-x-2 text-yellow-400 mb-2">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="h-5 w-5 fill-current" />
-              ))}
-            </div>
-            <p className="text-white/70">You're among the top learners!</p>
-          </div>
-
-          <div className="flex gap-3 mt-6">
-            <Button 
-              variant="outline"
-              className="flex-1 border-white/20 text-white hover:bg-white/10"
-              onClick={() => navigate("/student-courses")}
-            >
-              My Courses
-            </Button>
-            <Button 
-              className="flex-1 bg-gradient-to-r from-green-500 to-cyan-500 hover:from-green-600 hover:to-cyan-600"
-              onClick={handleRewatchCourse}
-            >
-              <Rocket className="h-4 w-4 mr-2" />
-              Rewatch Course
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

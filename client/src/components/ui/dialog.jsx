@@ -84,12 +84,6 @@ const DialogContent = React.forwardRef(
           <div className="absolute inset-0 bg-white/20 backdrop-blur-md rounded-3xl border border-white/30" />
           
           {children}
-          
-          {/* 💎 Ultra Premium Close Button */}
-          <DialogPrimitive.Close className="group absolute right-6 top-6 rounded-2xl p-3 bg-white/90 backdrop-blur-xl border border-white/60 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-110 hover:bg-white hover:border-blue-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:scale-110 active:scale-95 disabled:pointer-events-none data-[state=open]:bg-white/95">
-            <Cross2Icon className="h-5 w-5 text-gray-600 group-hover:text-blue-600 transition-all duration-300 group-hover:rotate-90" />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
         </DialogPrimitive.Content>
       </DialogPortal>
     );

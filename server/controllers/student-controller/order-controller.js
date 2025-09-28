@@ -1,7 +1,8 @@
-const paypal = require("../../helpers/paypal");
 const Order = require("../../models/Order");
 const Course = require("../../models/Course");
 const StudentCourses = require("../../models/StudentCourses");
+const razorpay = require("../../helpers/razorpay");
+const crypto = require("crypto");
 
 const createOrder = async (req, res) => {
   try {
@@ -13,8 +14,6 @@ const createOrder = async (req, res) => {
       paymentMethod,
       paymentStatus,
       orderDate,
-      paymentId,
-      payerId,
       instructorId,
       instructorName,
       courseImage,
@@ -23,108 +22,107 @@ const createOrder = async (req, res) => {
       coursePricing,
     } = req.body;
 
-    const create_payment_json = {
-      intent: "sale",
-      payer: {
-        payment_method: "paypal",
+    // Convert amount to paise (Razorpay uses smallest currency unit)
+    const amountInPaise = Math.round(coursePricing * 100);
+
+    const options = {
+      amount: amountInPaise,
+      currency: "INR",
+      receipt: `receipt_${courseId}_${userId}_${Date.now()}`,
+      notes: {
+        courseId: courseId,
+        userId: userId,
+        courseTitle: courseTitle,
       },
-      redirect_urls: {
-        return_url: `${process.env.CLIENT_URL}/payment-return`,
-        cancel_url: `${process.env.CLIENT_URL}/payment-cancel`,
-      },
-      transactions: [
-        {
-          item_list: {
-            items: [
-              {
-                name: courseTitle,
-                sku: courseId,
-                price: coursePricing,
-                currency: "USD",
-                quantity: 1,
-              },
-            ],
-          },
-          amount: {
-            currency: "USD",
-            total: coursePricing.toFixed(2),
-          },
-          description: courseTitle,
-        },
-      ],
+      payment_capture: 1 // Auto capture payment
     };
 
-    paypal.payment.create(create_payment_json, async (error, paymentInfo) => {
-      if (error) {
-        console.log(error);
-        return res.status(500).json({
-          success: false,
-          message: "Error while creating paypal payment!",
-        });
-      } else {
-        const newlyCreatedCourseOrder = new Order({
-          userId,
-          userName,
-          userEmail,
-          orderStatus,
-          paymentMethod,
-          paymentStatus,
-          orderDate,
-          paymentId,
-          payerId,
-          instructorId,
-          instructorName,
-          courseImage,
-          courseTitle,
-          courseId,
-          coursePricing,
-        });
+    // Create Razorpay order
+    const razorpayOrder = await razorpay.orders.create(options);
 
-        await newlyCreatedCourseOrder.save();
-
-        const approveUrl = paymentInfo.links.find(
-          (link) => link.rel == "approval_url"
-        ).href;
-
-        res.status(201).json({
-          success: true,
-          data: {
-            approveUrl,
-            orderId: newlyCreatedCourseOrder._id,
-          },
-        });
-      }
+    // Create order in database
+    const newlyCreatedCourseOrder = new Order({
+      userId,
+      userName,
+      userEmail,
+      orderStatus: orderStatus || "created",
+      paymentMethod: paymentMethod || "razorpay",
+      paymentStatus: paymentStatus || "pending",
+      orderDate: orderDate || new Date(),
+      razorpayOrderId: razorpayOrder.id,
+      instructorId,
+      instructorName,
+      courseImage,
+      courseTitle,
+      courseId,
+      coursePricing,
     });
+
+    await newlyCreatedCourseOrder.save();
+
+    res.status(201).json({
+      success: true,
+      data: {
+        razorpayOrderId: razorpayOrder.id,
+        amount: amountInPaise,
+        currency: "INR",
+        receipt: razorpayOrder.receipt,
+        orderId: newlyCreatedCourseOrder._id,
+        key: process.env.RAZORPAY_KEY_ID 
+      },
+    });
+
   } catch (err) {
     console.log(err);
     res.status(500).json({
       success: false,
-      message: "Some error occured!",
+      message: "Error while creating Razorpay order!",
     });
   }
 };
 
-const capturePaymentAndFinalizeOrder = async (req, res) => {
+const verifyPaymentAndFinalizeOrder = async (req, res) => {
   try {
-    const { paymentId, payerId, orderId } = req.body;
+    const { 
+      razorpay_payment_id, 
+      razorpay_order_id, 
+      razorpay_signature,
+      orderId 
+    } = req.body;
 
+    // Verify payment signature
+    const generatedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(razorpay_order_id + "|" + razorpay_payment_id)
+      .digest("hex");
+
+    if (generatedSignature !== razorpay_signature) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment verification failed",
+      });
+    }
+
+    // Find and update order
     let order = await Order.findById(orderId);
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: "Order can not be found",
+        message: "Order not found",
       });
     }
 
+    // Update order with payment details
     order.paymentStatus = "paid";
     order.orderStatus = "confirmed";
-    order.paymentId = paymentId;
-    order.payerId = payerId;
+    order.paymentId = razorpay_payment_id;
+    order.razorpayOrderId = razorpay_order_id;
+    order.razorpaySignature = razorpay_signature;
 
     await order.save();
 
-    //update out student course model
+    // Update student courses
     const studentCourses = await StudentCourses.findOne({
       userId: order.userId,
     });
@@ -158,7 +156,7 @@ const capturePaymentAndFinalizeOrder = async (req, res) => {
       await newStudentCourses.save();
     }
 
-    //update the course schema students
+    // Update course students
     await Course.findByIdAndUpdate(order.courseId, {
       $addToSet: {
         students: {
@@ -172,16 +170,47 @@ const capturePaymentAndFinalizeOrder = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Order confirmed",
+      message: "Payment verified and order confirmed",
+      data: order,
+    });
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      success: false,
+      message: "Error while verifying payment!",
+    });
+  }
+};
+
+const getOrderDetails = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    const order = await Order.findById(orderId);
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
       data: order,
     });
   } catch (err) {
     console.log(err);
     res.status(500).json({
       success: false,
-      message: "Some error occured!",
+      message: "Error fetching order details",
     });
   }
 };
 
-module.exports = { createOrder, capturePaymentAndFinalizeOrder };
+module.exports = { 
+  createOrder, 
+  verifyPaymentAndFinalizeOrder, 
+  getOrderDetails 
+};

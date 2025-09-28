@@ -158,11 +158,11 @@ function StudentHomePage() {
                 {!isEnrolled ? (
                   <>
                     <span className="text-xl font-bold text-gray-900">
-                      ${course?.pricing || 49.99}
+                      ₹{course?.pricing || 49.99}
                     </span>
                     {course?.originalPrice && course.originalPrice > course.pricing && (
                       <span className="text-sm text-gray-500 line-through">
-                        ${course.originalPrice}
+                        ₹{course.originalPrice}
                       </span>
                     )}
                   </>

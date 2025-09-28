@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -14,11 +15,13 @@ import { AuthContext } from "@/context/auth-context";
 import { StudentContext } from "@/context/student-context";
 import {
   createPaymentService,
-  fetchStudentViewCourseDetailsService
+  fetchStudentViewCourseDetailsService,
+  verifyPaymentService
 } from "@/services";
 import { CheckCircle, Globe, Lock, PlayCircle, Star, Users, BookOpen, ArrowLeft, Zap, Award, ChevronDown, ChevronUp, Eye, Target, BookText } from "lucide-react";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useCallback } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import toast from "react-hot-toast";
 
 function StudentViewCourseDetailsPage() {
   const {
@@ -34,7 +37,6 @@ function StudentViewCourseDetailsPage() {
 
   const [displayCurrentVideoFreePreview, setDisplayCurrentVideoFreePreview] = useState(null);
   const [showFreePreviewDialog, setShowFreePreviewDialog] = useState(false);
-  const [approvalUrl, setApprovalUrl] = useState("");
   const [openAccordion, setOpenAccordion] = useState({
     description: true,
     curriculum: true,
@@ -44,44 +46,144 @@ function StudentViewCourseDetailsPage() {
   const { id } = useParams();
   const location = useLocation();
 
-  async function fetchStudentViewCourseDetails() {
-    const response = await fetchStudentViewCourseDetailsService(currentCourseDetailsId);
-    if (response?.success) {
-      setStudentViewCourseDetails(response?.data);
-      setLoadingState(false);
-    } else {
+  const fetchStudentViewCourseDetails = useCallback(async () => {
+    if (!id) return;
+
+    setLoadingState(true);
+    try {
+      const response = await fetchStudentViewCourseDetailsService(id);
+      if (response?.success) {
+        setStudentViewCourseDetails(response?.data);
+      } else {
+        setStudentViewCourseDetails(null);
+      }
+    } catch (error) {
+      console.error("Error fetching course details:", error);
       setStudentViewCourseDetails(null);
+    } finally {
       setLoadingState(false);
     }
-  }
+  }, [id, setStudentViewCourseDetails, setLoadingState]);
 
   function handleSetFreePreview(getCurrentVideoInfo) {
     setDisplayCurrentVideoFreePreview(getCurrentVideoInfo?.videoUrl);
   }
 
   async function handleCreatePayment() {
-    const paymentPayload = {
-      userId: auth?.user?._id,
-      userName: auth?.user?.userName,
-      userEmail: auth?.user?.userEmail,
-      orderStatus: "pending",
-      paymentMethod: "ra",
-      paymentStatus: "initiated",
-      orderDate: new Date(),
-      paymentId: "",
-      payerId: "",
-      instructorId: studentViewCourseDetails?.instructorId,
-      instructorName: studentViewCourseDetails?.instructorName,
-      courseImage: studentViewCourseDetails?.image,
-      courseTitle: studentViewCourseDetails?.title,
-      courseId: studentViewCourseDetails?._id,
-      coursePricing: studentViewCourseDetails?.pricing,
-    };
+    if (!studentViewCourseDetails || !auth?.user?._id) {
+      console.error("Course details or user authentication missing");
+      toast.error("Please login to enroll in the course");
+      return;
+    }
 
-    const response = await createPaymentService(paymentPayload);
-    if (response.success) {
-      sessionStorage.setItem("currentOrderId", JSON.stringify(response?.data?.orderId));
-      setApprovalUrl(response?.data?.approveUrl);
+    const loadScript = (src) => new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+
+    try {
+
+      const scriptLoaded = await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+      if (!scriptLoaded) {
+        toast.error('Payment service is temporarily unavailable. Please try again later.');
+        return;
+      }
+
+      const paymentPayload = {
+        userId: auth.user._id,
+        userName: auth.user.userName,
+        userEmail: auth.user.userEmail,
+        orderStatus: "created",
+        paymentMethod: "razorpay",
+        paymentStatus: "pending",
+        orderDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
+        courseId: studentViewCourseDetails._id,
+        courseTitle: studentViewCourseDetails.title,
+        coursePricing: studentViewCourseDetails.pricing,
+        instructorId: studentViewCourseDetails.instructorId,
+        instructorName: studentViewCourseDetails.instructorName,
+        courseImage: studentViewCourseDetails.image
+      };
+
+      console.log('Creating payment with payload:', paymentPayload);
+
+      const response = await createPaymentService(paymentPayload);
+
+      if (!response.success) {
+        toast.error('Error creating payment order: ' + (response.message || 'Please try again'));
+        return;
+      }
+
+      const orderData = response.data;
+
+      const options = {
+        key: orderData.key,
+        amount: orderData.amount,
+        currency: orderData.currency || "INR",
+        name: 'VIRTI-LEARN E-Learning Platform',
+        description: `Enrollment for ${studentViewCourseDetails.title}`,
+        order_id: orderData.razorpayOrderId,
+        prefill: {
+          name: auth.user.userName,
+          email: auth.user.userEmail,
+        },
+        theme: {
+          color: '#528FF0'
+        },
+        handler: async function (paymentResponse) {
+          console.log('Payment successful:', paymentResponse);
+
+          try {
+            const verificationData = {
+              razorpay_payment_id: paymentResponse.razorpay_payment_id,
+              razorpay_order_id: paymentResponse.razorpay_order_id,
+              razorpay_signature: paymentResponse.razorpay_signature,
+              orderId: orderData.orderId
+            };
+
+            const verifyResponse = await verifyPaymentService(verificationData);
+            if (verifyResponse.data.success) {
+              toast.success('Payment successful 🎉');
+              setTimeout(() => {
+                window.location.reload();
+                toast.success(`You have Enrolled into ${studentViewCourseDetails.title}`)
+              }, 2000);
+              navigate('/courses')
+            } else {
+              toast.error('Payment verification failed. Please contact support.');
+            }
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            toast.error('Payment verification failed. Please contact support.');
+          } finally {
+
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            console.log('Payment modal closed by user');
+            toast.info('Payment was cancelled. You can try again anytime.');
+
+          }
+        }
+      };
+
+      const razorpayInstance = new window.Razorpay(options);
+
+      razorpayInstance.on('payment.failed', function (response) {
+        console.error('Payment failed:', response.error);
+        toast.error(`Payment failed: ${response.error.description}`);
+
+      });
+
+      razorpayInstance.open();
+
+    } catch (error) {
+      console.error('Payment initialization error:', error);
+      toast.error('Payment failed to initialize. Please try again.');
     }
   }
 
@@ -90,23 +192,24 @@ function StudentViewCourseDetailsPage() {
   };
 
   useEffect(() => {
-    if (displayCurrentVideoFreePreview !== null) setShowFreePreviewDialog(true);
+    if (displayCurrentVideoFreePreview !== null) {
+      setShowFreePreviewDialog(true);
+    }
   }, [displayCurrentVideoFreePreview]);
 
   useEffect(() => {
-    if (currentCourseDetailsId !== null) fetchStudentViewCourseDetails();
-  }, [currentCourseDetailsId]);
-
-  useEffect(() => {
-    if (id) setCurrentCourseDetailsId(id);
-  }, [id]);
+    if (id) {
+      setCurrentCourseDetailsId(id);
+      fetchStudentViewCourseDetails();
+    }
+  }, [id, setCurrentCourseDetailsId, fetchStudentViewCourseDetails]);
 
   useEffect(() => {
     if (!location.pathname.includes("course/details")) {
       setStudentViewCourseDetails(null);
       setCurrentCourseDetailsId(null);
     }
-  }, [location.pathname]);
+  }, [location.pathname, setStudentViewCourseDetails, setCurrentCourseDetailsId]);
 
   if (loadingState) {
     return (
@@ -124,10 +227,6 @@ function StudentViewCourseDetailsPage() {
         </div>
       </div>
     );
-  }
-
-  if (approvalUrl !== "") {
-    window.location.href = approvalUrl;
   }
 
   const freePreviewVideos = studentViewCourseDetails?.curriculum?.filter((item) => item.freePreview) || [];
@@ -338,7 +437,6 @@ function StudentViewCourseDetailsPage() {
                         url={studentViewCourseDetails.curriculum.find(item => item.freePreview).videoUrl}
                         width="100%"
                         height="100%"
-
                       />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end p-3">
@@ -350,12 +448,11 @@ function StudentViewCourseDetailsPage() {
                 {/* Pricing */}
                 <div className="text-center mb-6">
                   <div className="flex items-center justify-center gap-2 mb-2">
-                    <span className="text-3xl font-bold text-gray-900">${studentViewCourseDetails?.pricing}</span>
-                    <span className="text-sm text-gray-500 line-through">${(studentViewCourseDetails?.pricing * 1.5).toFixed(0)}</span>
+                    <span className="text-3xl font-bold text-gray-900">₹{studentViewCourseDetails?.pricing}</span>
+                    <span className="text-sm text-gray-500 line-through">₹{(studentViewCourseDetails?.pricing * 1.5).toFixed(0)}</span>
                   </div>
                   <div className="text-green-600 font-medium flex items-center justify-center gap-1 text-sm">
-                    <Star className="h-4 w-4 fill-current" />
-                    <span>33% discount</span>
+                    <span>33% off discount</span>
                   </div>
                 </div>
 
@@ -378,10 +475,10 @@ function StudentViewCourseDetailsPage() {
                 {/* CTA Button */}
                 <Button
                   onClick={handleCreatePayment}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105"
+                  disabled={!studentViewCourseDetails || !auth?.user?._id}
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                   size="lg"
                 >
-           
                   Enroll Now
                 </Button>
 

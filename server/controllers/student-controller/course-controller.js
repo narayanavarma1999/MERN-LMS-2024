@@ -98,7 +98,7 @@ const checkCoursePurchaseInfo = async (req, res) => {
     });
     if (!studentCourses) {
       return res.status(200).json({
-        success: false,
+        success: true,
         data: null,
       })
     }

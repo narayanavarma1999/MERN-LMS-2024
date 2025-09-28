@@ -23,7 +23,6 @@ function Profile() {
     const progress = userProgress ? userProgress : 0
     const [activeTab, setActiveTab] = useState('overview');
 
-    console.log(`auth user response:${JSON.stringify(auth)}`)
 
     // Calculate stats
     const completedCourses = studentBoughtCoursesList?.filter(course => course.progress === 100).length || 0;

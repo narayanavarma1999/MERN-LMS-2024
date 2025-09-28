@@ -25,13 +25,11 @@ app.use(
 
 app.use(express.json());
 
-//database connection
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("mongodb is connected"))
   .catch((e) => console.log(e));
 
-//routes configuration
 app.use("/auth", authRoutes);
 app.use("/media", mediaRoutes);
 app.use("/instructor/course", instructorCourseRoutes);

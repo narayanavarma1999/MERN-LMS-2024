@@ -7,7 +7,7 @@ const getCoursesByStudentId = async (req, res) => {
     const studentBoughtCourses = await StudentCourses.findOne({
       userId: studentId,
     });
-
+  
     res.status(200).json({
       success: true,
       data: studentBoughtCourses.courses,

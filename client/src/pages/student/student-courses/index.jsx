@@ -7,8 +7,7 @@ import {
   PlayCircle,
   Clock,
   BookOpen,
-  Star, Zap,
-  Award
+  Star, Award, ArrowRight
 } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -257,11 +256,11 @@ function StudentCoursesPage() {
                 Start your learning journey by enrolling in your first course!
               </p>
               <Button
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg text-lg"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-lg font-semibold text-sm transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
                 onClick={() => navigate('/courses')}
               >
-                <Zap className="h-5 w-5 mr-2" />
                 Browse Courses
+                <ArrowRight className="h-5 w-5 mr-2" />
               </Button>
             </div>
           </div>

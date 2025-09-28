@@ -164,3 +164,8 @@ export async function resetCourseProgressService(userId, courseId) {
 
   return data;
 }
+
+export const verifyPaymentService = async (verificationPayload) => {
+  const response = await axiosInstance.post(`/student/order/verify`, verificationPayload);
+  return response
+};

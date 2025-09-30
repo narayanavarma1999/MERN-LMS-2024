@@ -2,7 +2,6 @@ const CourseProgress = require("../../models/CourseProgress");
 const Course = require("../../models/Course");
 const StudentCourses = require("../../models/StudentCourses");
 
-//mark current lecture as viewed
 const markCurrentLectureAsViewed = async (req, res) => {
   try {
     const { userId, courseId, lectureId } = req.body;

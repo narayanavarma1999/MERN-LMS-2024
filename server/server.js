@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const authRoutes = require("./routes/auth-routes/index");
 const mediaRoutes = require("./routes/instructor-routes/media-routes");
 const instructorCourseRoutes = require("./routes/instructor-routes/course-routes");
+const orderRoutes = require("./routes/order-routes");
 const studentViewCourseRoutes = require("./routes/student-routes/course-routes");
 const studentViewOrderRoutes = require("./routes/student-routes/order-routes");
 const studentCoursesRoutes = require("./routes/student-routes/student-courses-routes");
@@ -19,7 +20,7 @@ app.use(
     origin: process.env.CLIENT_URL,
     methods: ["GET", "POST", "DELETE", "PUT"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true 
+    credentials: true
   })
 );
 
@@ -32,6 +33,7 @@ mongoose
 
 app.use("/auth", authRoutes);
 app.use("/media", mediaRoutes);
+app.use("/orders", orderRoutes)
 app.use("/instructor/course", instructorCourseRoutes);
 app.use("/student/course", studentViewCourseRoutes);
 app.use("/student/order", studentViewOrderRoutes);

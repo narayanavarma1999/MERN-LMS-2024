@@ -147,4 +147,35 @@ OrderSchema.pre('save', function(next) {
   next();
 });
 
+
+OrderSchema.methods.getFormattedDates = function() {
+  const { format } = require('date-fns');
+  
+  return {
+    orderDate: format(this.orderDate, 'MMM dd, yyyy • hh:mm a'),
+    paymentDate: this.paymentDate ? format(this.paymentDate, 'MMM dd, yyyy • hh:mm a') : null,
+    createdAt: format(this.createdAt, 'MMM dd, yyyy • hh:mm a'),
+    updatedAt: format(this.updatedAt, 'MMM dd, yyyy • hh:mm a')
+  };
+};
+
+OrderSchema.methods.getRefundInfo = function() {
+  const { addDays, differenceInDays, isAfter, format } = require('date-fns');
+  
+  if (!this.paymentDate || this.paymentStatus !== 'paid') {
+    return { eligible: false, reason: 'Payment not completed' };
+  }
+
+  const refundDeadline = addDays(this.paymentDate, 30);
+  const daysRemaining = differenceInDays(refundDeadline, new Date());
+  const isEligible = !isAfter(new Date(), refundDeadline);
+
+  return {
+    eligible: isEligible,
+    daysRemaining: isEligible ? daysRemaining : 0,
+    deadline: format(refundDeadline, 'MMM dd, yyyy'),
+    deadlinePassed: !isEligible
+  };
+};
+
 module.exports = mongoose.model("Order", OrderSchema);

@@ -123,7 +123,7 @@ function StudentViewCourseDetailsPage() {
         key: orderData.key,
         amount: orderData.amount,
         currency: orderData.currency || "INR",
-        name: 'VIRTI-LEARN E-Learning Platform',
+        name: 'Virti-Learn E-Learning Platform',
         description: `Enrollment for ${studentViewCourseDetails.title}`,
         order_id: orderData.razorpayOrderId,
         prefill: {
@@ -147,11 +147,8 @@ function StudentViewCourseDetailsPage() {
             const verifyResponse = await verifyPaymentService(verificationData);
             if (verifyResponse.data.success) {
               toast.success('Payment successful 🎉');
-              setTimeout(() => {
-                window.location.reload();
-                toast.success(`You have Enrolled into ${studentViewCourseDetails.title}`)
-              }, 2000);
-              navigate('/courses')
+               navigate('/courses')
+               toast.success(`You have Enrolled into ${studentViewCourseDetails.title}`)
             } else {
               toast.error('Payment verification failed. Please contact support.');
             }
